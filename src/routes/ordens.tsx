@@ -237,12 +237,13 @@ function OrdensPage() {
       reserva: temReserva
         ? { numero: resNumero.trim(), imagemNome: resFile?.name ?? "—", vinculadaEm: nowBR() }
         : undefined,
+      bo: bo.numero.trim()
+        ? { numero: bo.numero.trim(), delegacia: bo.delegacia.trim(), data: bo.data.trim(), imagemNome: boFile?.name ?? "—" }
+        : undefined,
     });
     setOsGerada(nova.id);
     toast.success(
-      temReserva
-        ? `${nova.id} gerada e vinculada à reserva ${resNumero.trim()}.`
-        : `${nova.id} gerada com sucesso.`,
+      `${nova.id} gerada${temReserva ? ` · reserva ${resNumero.trim()}` : ""}${bo.numero.trim() ? ` · BO ${bo.numero.trim()}` : ""}.`,
     );
     // limpa o formulário para a próxima OS
     setPrintFile(null);
@@ -250,6 +251,9 @@ function OrdensPage() {
     setResFile(null);
     setResUrl("");
     setResNumero("");
+    setBoFile(null);
+    setBoUrl("");
+    setBo({ numero: "", delegacia: "", data: "" });
     setForm({ data: "", loja: "", setor: "", ocorrencia: "", descricao: "", gravidade: "Média" });
   };
 
@@ -258,7 +262,7 @@ function OrdensPage() {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Ordens de Serviço</h1>
         <p className="text-sm text-muted-foreground">
-          Envie o print da ocorrência e o print da reserva de imagem — a OS é gerada já vinculada à reserva.
+          Envie os prints da ocorrência, da reserva de imagem e do Boletim de Ocorrência — tudo é lido e vinculado à OS.
         </p>
       </div>
 
@@ -267,10 +271,10 @@ function OrdensPage() {
           <ScanText className="size-4 text-primary" /> Nova OS a partir de print
         </h2>
         <p className="mb-4 text-xs text-muted-foreground">
-          O sistema lê os prints e preenche os dados automaticamente.
+          Ao enviar cada imagem, o sistema lê e preenche os dados automaticamente.
         </p>
 
-        <div className="grid gap-6 lg:grid-cols-2">
+        <div className="grid gap-6 lg:grid-cols-3">
           {/* Print da ocorrência */}
           <div>
             <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">

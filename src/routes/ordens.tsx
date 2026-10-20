@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useRef, useState } from "react";
 import {
   ClipboardList,
+  FileText,
   ImageUp,
   Link2,
   Loader2,
@@ -30,7 +31,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useOS, nowBR, type Severity } from "@/lib/os-store";
 import { useCadastro } from "@/lib/cadastro-store";
-import { interpretarTexto, lerImagem } from "@/lib/ocr";
+import { interpretarBO, interpretarTexto, lerImagem } from "@/lib/ocr";
 
 export const Route = createFileRoute("/ordens")({
   head: () => ({
@@ -295,14 +296,14 @@ function OrdensPage() {
             />
             {printFile && (
               <div className="mt-3 flex items-center gap-2">
-                <Button onClick={lerPrint} disabled={lendo} className="flex-1">
+                <Button onClick={() => lerPrint()} disabled={lendo} variant="outline" className="flex-1">
                   {lendo ? (
                     <>
                       <Loader2 className="animate-spin" /> Lendo print… {progresso}%
                     </>
                   ) : (
                     <>
-                      <ScanText /> Ler print e preencher OS
+                      <ScanText /> Ler novamente
                     </>
                   )}
                 </Button>
@@ -346,14 +347,14 @@ function OrdensPage() {
             />
             {resFile && (
               <div className="mt-3 flex items-center gap-2">
-                <Button onClick={lerReserva} disabled={lendoRes} variant="outline" className="flex-1">
+                <Button onClick={() => lerReserva()} disabled={lendoRes} variant="outline" className="flex-1">
                   {lendoRes ? (
                     <>
                       <Loader2 className="animate-spin" /> Lendo número…
                     </>
                   ) : (
                     <>
-                      <ScanText /> Ler número da reserva
+                      <ScanText /> Ler novamente
                     </>
                   )}
                 </Button>
@@ -381,12 +382,69 @@ function OrdensPage() {
               </Field>
             </div>
           </div>
+
+          {/* Boletim de Ocorrência */}
+          <div>
+            <p className="mb-2 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              <FileText className="size-3.5 text-primary" /> 3. Boletim de Ocorrência
+            </p>
+            <input
+              ref={boInput}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => escolherBo(e.target.files?.[0])}
+            />
+            <UploadBox
+              url={boUrl}
+              alt="Print do Boletim de Ocorrência"
+              texto="Clique para enviar o print do BO"
+              onClick={() => boInput.current?.click()}
+            />
+            {boFile && (
+              <div className="mt-3 flex items-center gap-2">
+                <Button onClick={() => lerBo()} disabled={lendoBo} variant="outline" className="flex-1">
+                  {lendoBo ? (
+                    <>
+                      <Loader2 className="animate-spin" /> Lendo BO…
+                    </>
+                  ) : (
+                    <>
+                      <ScanText /> Ler novamente
+                    </>
+                  )}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    setBoFile(null);
+                    setBoUrl("");
+                  }}
+                  aria-label="Remover print do BO"
+                >
+                  <Trash2 />
+                </Button>
+              </div>
+            )}
+            <div className="mt-3 space-y-3">
+              <Field label="Número do BO">
+                <Input value={bo.numero} onChange={(e) => setBo({ ...bo, numero: e.target.value })} placeholder="Ex.: AB1234/2026" className="font-mono" />
+              </Field>
+              <Field label="Delegacia">
+                <Input value={bo.delegacia} onChange={(e) => setBo({ ...bo, delegacia: e.target.value })} placeholder="Ex.: 3º Distrito Policial" />
+              </Field>
+              <Field label="Data do registro">
+                <Input value={bo.data} onChange={(e) => setBo({ ...bo, data: e.target.value })} placeholder="dd/mm/aaaa" />
+              </Field>
+            </div>
+          </div>
         </div>
 
         {/* Dados da OS */}
         <div className="mt-6 border-t border-border pt-5">
           <p className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            3. Dados da OS
+            4. Dados da OS
           </p>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Field label="Data da ocorrência">

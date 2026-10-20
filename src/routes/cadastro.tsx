@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
 import { z } from "zod";
-import { Store, UserCog, ClipboardCheck, ShieldHalf, Trash2, Plus, Pencil, Save } from "lucide-react";
+import { Store, ClipboardCheck, ShieldHalf, Trash2, Plus, Pencil, Save } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -15,16 +15,15 @@ export const Route = createFileRoute("/cadastro")({
   head: () => ({
     meta: [
       { title: "Cadastro — Controle PP" },
-      { name: "description", content: "Cadastro de lojas, gerentes, fiscais e seguranças." },
+      { name: "description", content: "Cadastro de lojas, fiscais e seguranças." },
       { property: "og:title", content: "Cadastro — Controle PP" },
-      { property: "og:description", content: "Cadastro de lojas, gerentes, fiscais e seguranças." },
+      { property: "og:description", content: "Cadastro de lojas, fiscais e seguranças." },
     ],
   }),
   component: CadastroPage,
 });
 
 const funcoes: { value: Funcao; label: string; plural: string; icon: typeof Store }[] = [
-  { value: "gerente", label: "Gerente", plural: "Gerentes", icon: UserCog },
   { value: "fiscal", label: "Fiscal", plural: "Fiscais", icon: ClipboardCheck },
   { value: "seguranca", label: "Segurança", plural: "Seguranças", icon: ShieldHalf },
 ];

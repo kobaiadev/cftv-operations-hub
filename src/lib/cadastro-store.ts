@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from "react";
 
 export type Loja = { id: string; nome: string; gerente: string; endereco: string; estado: string; cidade: string; telefone: string };
-export type Funcao = "gerente" | "fiscal" | "seguranca";
+export type Funcao = "fiscal" | "seguranca";
 export type Pessoa = { id: string; funcao: Funcao; nome: string; matricula: string; telefone: string; lojaId: string; turno: string };
 
 type State = { lojas: Loja[]; pessoas: Pessoa[] };
@@ -13,9 +13,8 @@ const seed: State = {
     { id: "l2", nome: "Loja Centro", gerente: "Fernanda Rocha", endereco: "Rua XV de Novembro, 250", estado: "SP", cidade: "Guarulhos", telefone: "(11) 4000-0014" },
   ],
   pessoas: [
-    { id: "p1", funcao: "gerente", nome: "Carlos Mendes", matricula: "10234", telefone: "(11) 98888-1001", lojaId: "l1", turno: "Integral" },
-    { id: "p2", funcao: "fiscal", nome: "Ana Souza", matricula: "20411", telefone: "(11) 98888-2002", lojaId: "l2", turno: "Manhã" },
-    { id: "p3", funcao: "seguranca", nome: "Roberto Lima", matricula: "30987", telefone: "(11) 98888-3003", lojaId: "l2", turno: "Noite" },
+    { id: "p1", funcao: "fiscal", nome: "Ana Souza", matricula: "20411", telefone: "(11) 98888-2002", lojaId: "l2", turno: "Manhã" },
+    { id: "p2", funcao: "seguranca", nome: "Roberto Lima", matricula: "30987", telefone: "(11) 98888-3003", lojaId: "l2", turno: "Noite" },
   ],
 };
 

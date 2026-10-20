@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useQuery } from "@tanstack/react-query";
+import { ESTADOS, cidadesQuery } from "@/lib/localidades";
 import { useCadastro, type Funcao } from "@/lib/cadastro-store";
 
 export const Route = createFileRoute("/cadastro")({
@@ -75,14 +77,17 @@ const lojaSchema = z.object({
   nome: z.string().trim().min(2, "Informe o nome").max(80),
   gerente: z.string().trim().min(3, "Informe o gerente responsável").max(100),
   endereco: z.string().trim().min(3, "Informe o endereço").max(150),
+  estado: z.string().length(2, "Selecione o estado"),
+  cidade: z.string().min(1, "Selecione a cidade"),
   telefone: z.string().trim().max(20),
 });
 
 function LojasTab() {
   const { lojas, addLoja, updateLoja, removeLoja } = useCadastro();
-  const empty = { nome: "", gerente: "", endereco: "", telefone: "" };
+  const empty = { nome: "", gerente: "", endereco: "", estado: "", cidade: "", telefone: "" };
   const [form, setForm] = useState(empty);
   const [editId, setEditId] = useState<string | null>(null);
+  const cidades = useQuery(cidadesQuery(form.estado));
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const reset = () => { setForm(empty); setEditId(null); setErrors({}); };
@@ -112,6 +117,24 @@ function LojasTab() {
           <Field label="Endereço" error={errors["endereco"]}>
             <Input value={form.endereco} onChange={(e) => setForm({ ...form, endereco: e.target.value })} />
           </Field>
+          <Field label="Estado" error={errors["estado"]}>
+            <Select value={form.estado} onValueChange={(v) => setForm({ ...form, estado: v, cidade: "" })}>
+              <SelectTrigger className="w-full"><SelectValue placeholder="Selecione o estado" /></SelectTrigger>
+              <SelectContent className="max-h-72">
+                {ESTADOS.map(([uf, nome]) => <SelectItem key={uf} value={uf}>{nome} ({uf})</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </Field>
+          <Field label="Cidade" error={errors["cidade"] ?? (cidades.isError ? "Não foi possível carregar as cidades" : undefined)}>
+            <Select value={form.cidade} onValueChange={(v) => setForm({ ...form, cidade: v })} disabled={!form.estado || cidades.isLoading}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder={!form.estado ? "Selecione o estado primeiro" : cidades.isLoading ? "Carregando cidades..." : "Selecione a cidade"} />
+              </SelectTrigger>
+              <SelectContent className="max-h-72">
+                {(cidades.data ?? (form.cidade ? [form.cidade] : [])).map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </Field>
           <Field label="Telefone" error={errors["telefone"]}>
             <Input value={form.telefone} onChange={(e) => setForm({ ...form, telefone: e.target.value })} placeholder="(11) 4000-0000" />
           </Field>
@@ -126,21 +149,23 @@ function LojasTab() {
               <TableHead className="pl-5">Nome</TableHead>
               <TableHead>Gerente responsável</TableHead>
               <TableHead className="hidden md:table-cell">Endereço</TableHead>
-              <TableHead className="hidden sm:table-cell">Telefone</TableHead>
+              <TableHead className="hidden sm:table-cell">Cidade/UF</TableHead>
+              <TableHead className="hidden xl:table-cell">Telefone</TableHead>
               <TableHead className="pr-5 w-24" />
             </TableRow>
           </TableHeader>
           <TableBody>
-            {lojas.length === 0 && <EmptyRow cols={5} />}
+            {lojas.length === 0 && <EmptyRow cols={6} />}
             {lojas.map((l) => (
               <TableRow key={l.id} className={editId === l.id ? "bg-primary/10" : undefined}>
                 <TableCell className="pl-5 font-medium">{l.nome}</TableCell>
                 <TableCell>{l.gerente}</TableCell>
                 <TableCell className="hidden md:table-cell text-muted-foreground">{l.endereco}</TableCell>
-                <TableCell className="hidden sm:table-cell font-mono text-xs">{l.telefone}</TableCell>
+                <TableCell className="hidden sm:table-cell whitespace-nowrap">{l.cidade ? `${l.cidade}/${l.estado}` : "—"}</TableCell>
+                <TableCell className="hidden xl:table-cell font-mono text-xs">{l.telefone}</TableCell>
                 <TableCell className="pr-5 whitespace-nowrap">
                   <Button variant="ghost" size="icon" aria-label={`Editar loja ${l.nome}`}
-                    onClick={() => { setEditId(l.id); setErrors({}); setForm({ nome: l.nome, gerente: l.gerente, endereco: l.endereco, telefone: l.telefone }); }}>
+                    onClick={() => { setEditId(l.id); setErrors({}); setForm({ nome: l.nome, gerente: l.gerente, endereco: l.endereco, estado: l.estado ?? "", cidade: l.cidade ?? "", telefone: l.telefone }); }}>
                     <Pencil className="text-primary" />
                   </Button>
                   <Button variant="ghost" size="icon" aria-label={`Excluir loja ${l.nome}`}

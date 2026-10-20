@@ -19,7 +19,7 @@ export type OS = {
   gravidade: Severity;
   status: OSStatus;
   printNome?: string | undefined;
-  reserva?: Reserva;
+  reserva?: Reserva | undefined;
 };
 
 type State = { ordens: OS[] };
@@ -91,7 +91,7 @@ export function useOS() {
         ...o,
         id: nextOSId(),
         data: o.data ?? nowBR(),
-        status: o.status ?? "Aguardando Imagens",
+        status: o.status ?? (o.reserva ? "Em Análise" : "Aguardando Imagens"),
       };
       set({ ordens: [nova, ...state.ordens] });
       return nova;

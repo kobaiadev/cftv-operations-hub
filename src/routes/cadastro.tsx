@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
 import { z } from "zod";
-import { Store, UserCog, ClipboardCheck, ShieldHalf, Trash2, Plus } from "lucide-react";
+import { Store, UserCog, ClipboardCheck, ShieldHalf, Trash2, Plus, Pencil, Save } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -72,17 +72,20 @@ function Panel({ title, children }: { title: string; children: React.ReactNode }
 }
 
 const lojaSchema = z.object({
-  codigo: z.string().trim().regex(/^\d{1,4}$/, "Use até 4 dígitos"),
   nome: z.string().trim().min(2, "Informe o nome").max(80),
+  gerente: z.string().trim().min(3, "Informe o gerente responsável").max(100),
   endereco: z.string().trim().min(3, "Informe o endereço").max(150),
   telefone: z.string().trim().max(20),
 });
 
 function LojasTab() {
-  const { lojas, addLoja, removeLoja } = useCadastro();
-  const empty = { codigo: "", nome: "", endereco: "", telefone: "" };
+  const { lojas, addLoja, updateLoja, removeLoja } = useCadastro();
+  const empty = { nome: "", gerente: "", endereco: "", telefone: "" };
   const [form, setForm] = useState(empty);
+  const [editId, setEditId] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const reset = () => { setForm(empty); setEditId(null); setErrors({}); };
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
@@ -91,24 +94,20 @@ function LojasTab() {
       setErrors(Object.fromEntries(r.error.issues.map((i) => [i.path[0], i.message])));
       return;
     }
-    if (lojas.some((l) => l.codigo === r.data.codigo.padStart(3, "0"))) {
-      setErrors({ codigo: "Código já cadastrado" });
-      return;
-    }
-    addLoja({ ...r.data, codigo: r.data.codigo.padStart(3, "0") });
-    setForm(empty);
-    setErrors({});
+    if (editId) updateLoja(editId, r.data);
+    else addLoja(r.data);
+    reset();
   };
 
   return (
     <div className="grid gap-6 lg:grid-cols-[360px_1fr]">
-      <Panel title="Nova loja">
+      <Panel title={editId ? "Editar loja" : "Nova loja"}>
         <form onSubmit={submit} className="space-y-4 p-5">
-          <Field label="Código" error={errors["codigo"]}>
-            <Input value={form.codigo} onChange={(e) => setForm({ ...form, codigo: e.target.value })} placeholder="014" />
-          </Field>
           <Field label="Nome da loja" error={errors["nome"]}>
             <Input value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} placeholder="Centro" />
+          </Field>
+          <Field label="Gerente responsável" error={errors["gerente"]}>
+            <Input value={form.gerente} onChange={(e) => setForm({ ...form, gerente: e.target.value })} />
           </Field>
           <Field label="Endereço" error={errors["endereco"]}>
             <Input value={form.endereco} onChange={(e) => setForm({ ...form, endereco: e.target.value })} />
@@ -116,31 +115,36 @@ function LojasTab() {
           <Field label="Telefone" error={errors["telefone"]}>
             <Input value={form.telefone} onChange={(e) => setForm({ ...form, telefone: e.target.value })} placeholder="(11) 4000-0000" />
           </Field>
-          <Button type="submit" className="w-full"><Plus /> Cadastrar loja</Button>
+          <Button type="submit" className="w-full">{editId ? <><Save /> Salvar alterações</> : <><Plus /> Cadastrar loja</>}</Button>
+          {editId && <Button type="button" variant="outline" className="w-full" onClick={reset}>Cancelar</Button>}
         </form>
       </Panel>
       <Panel title={`Lojas cadastradas (${lojas.length})`}>
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
-              <TableHead className="pl-5">Código</TableHead>
-              <TableHead>Nome</TableHead>
+              <TableHead className="pl-5">Nome</TableHead>
+              <TableHead>Gerente responsável</TableHead>
               <TableHead className="hidden md:table-cell">Endereço</TableHead>
               <TableHead className="hidden sm:table-cell">Telefone</TableHead>
-              <TableHead className="pr-5 w-10" />
+              <TableHead className="pr-5 w-24" />
             </TableRow>
           </TableHeader>
           <TableBody>
             {lojas.length === 0 && <EmptyRow cols={5} />}
             {lojas.map((l) => (
-              <TableRow key={l.id}>
-                <TableCell className="pl-5 font-mono text-primary">{l.codigo}</TableCell>
-                <TableCell>{l.nome}</TableCell>
+              <TableRow key={l.id} className={editId === l.id ? "bg-primary/10" : undefined}>
+                <TableCell className="pl-5 font-medium">{l.nome}</TableCell>
+                <TableCell>{l.gerente}</TableCell>
                 <TableCell className="hidden md:table-cell text-muted-foreground">{l.endereco}</TableCell>
                 <TableCell className="hidden sm:table-cell font-mono text-xs">{l.telefone}</TableCell>
-                <TableCell className="pr-5">
+                <TableCell className="pr-5 whitespace-nowrap">
+                  <Button variant="ghost" size="icon" aria-label={`Editar loja ${l.nome}`}
+                    onClick={() => { setEditId(l.id); setErrors({}); setForm({ nome: l.nome, gerente: l.gerente, endereco: l.endereco, telefone: l.telefone }); }}>
+                    <Pencil className="text-primary" />
+                  </Button>
                   <Button variant="ghost" size="icon" aria-label={`Excluir loja ${l.nome}`}
-                    onClick={() => confirm(`Excluir a loja ${l.nome} e sua equipe?`) && removeLoja(l.id)}>
+                    onClick={() => { if (confirm(`Excluir a loja ${l.nome} e sua equipe?`)) { removeLoja(l.id); if (editId === l.id) reset(); } }}>
                     <Trash2 className="text-destructive" />
                   </Button>
                 </TableCell>
@@ -169,7 +173,7 @@ function PessoasTab({ funcao, label, plural }: { funcao: Funcao; label: string; 
   const lista = pessoas.filter((p) => p.funcao === funcao);
   const lojaNome = (id: string) => {
     const l = lojas.find((x) => x.id === id);
-    return l ? `Loja ${l.codigo} — ${l.nome}` : "—";
+    return l ? l.nome : "—";
   };
 
   const submit = (e: FormEvent) => {
@@ -201,7 +205,7 @@ function PessoasTab({ funcao, label, plural }: { funcao: Funcao; label: string; 
             <Select value={form.lojaId} onValueChange={(v) => setForm({ ...form, lojaId: v })}>
               <SelectTrigger className="w-full"><SelectValue placeholder={lojas.length ? "Selecione" : "Cadastre uma loja primeiro"} /></SelectTrigger>
               <SelectContent>
-                {lojas.map((l) => <SelectItem key={l.id} value={l.id}>Loja {l.codigo} — {l.nome}</SelectItem>)}
+                {lojas.map((l) => <SelectItem key={l.id} value={l.id}>{l.nome}</SelectItem>)}
               </SelectContent>
             </Select>
           </Field>

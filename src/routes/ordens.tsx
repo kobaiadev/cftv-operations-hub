@@ -115,6 +115,13 @@ function OrdensPage() {
   const [resNumero, setResNumero] = useState("");
   const [lendoRes, setLendoRes] = useState(false);
 
+  // ---- Boletim de Ocorrência ----
+  const boInput = useRef<HTMLInputElement>(null);
+  const [boFile, setBoFile] = useState<File | null>(null);
+  const [boUrl, setBoUrl] = useState("");
+  const [bo, setBo] = useState({ numero: "", delegacia: "", data: "" });
+  const [lendoBo, setLendoBo] = useState(false);
+
   const [osGerada, setOsGerada] = useState<string | null>(null);
 
   const escolherPrint = (f: File | undefined) => {
@@ -122,25 +129,26 @@ function OrdensPage() {
     setPrintFile(f);
     setPrintUrl(URL.createObjectURL(f));
     setOsGerada(null);
+    void lerPrint(f);
   };
 
-  const lerPrint = async () => {
-    if (!printFile) return;
+  const lerPrint = async (file: File | null = printFile) => {
+    if (!file) return;
     setLendo(true);
     setProgresso(0);
     try {
-      const texto = await lerImagem(printFile, setProgresso);
+      const texto = await lerImagem(file, setProgresso);
       const r = interpretarTexto(texto, nomesLojas);
-      setForm({
-        data: r.data || nowBR(),
-        loja: r.loja,
-        setor: r.setor,
-        ocorrencia: r.ocorrencia,
-        descricao: r.descricao,
-        gravidade: r.gravidade,
-      });
-      if (r.reservaNumero && !resNumero) setResNumero(r.reservaNumero);
-      toast.success("Print lido. Confira os dados antes de gerar a OS.");
+      setForm((prev) => ({
+        data: r.data || prev.data || nowBR(),
+        loja: r.loja || prev.loja,
+        setor: r.setor || prev.setor,
+        ocorrencia: r.ocorrencia || prev.ocorrencia,
+        descricao: r.descricao || prev.descricao,
+        gravidade: r.ocorrencia ? r.gravidade : prev.gravidade,
+      }));
+      if (r.reservaNumero) setResNumero((v) => v || r.reservaNumero);
+      toast.success("Print lido e dados preenchidos. Confira antes de gerar a OS.");
     } catch {
       toast.error("Não foi possível ler a imagem. Tente um print mais nítido.");
     } finally {
@@ -152,13 +160,14 @@ function OrdensPage() {
     if (!f) return;
     setResFile(f);
     setResUrl(URL.createObjectURL(f));
+    void lerReserva(f);
   };
 
-  const lerReserva = async () => {
-    if (!resFile) return;
+  const lerReserva = async (file: File | null = resFile) => {
+    if (!file) return;
     setLendoRes(true);
     try {
-      const texto = await lerImagem(resFile, () => {});
+      const texto = await lerImagem(file, () => {});
       const r = interpretarTexto(texto, nomesLojas);
       if (r.reservaNumero) {
         setResNumero(r.reservaNumero);
@@ -170,6 +179,44 @@ function OrdensPage() {
       toast.error("Não foi possível ler a imagem da reserva.");
     } finally {
       setLendoRes(false);
+    }
+  };
+
+  const escolherBo = (f: File | undefined) => {
+    if (!f) return;
+    setBoFile(f);
+    setBoUrl(URL.createObjectURL(f));
+    void lerBo(f);
+  };
+
+  const lerBo = async (file: File | null = boFile) => {
+    if (!file) return;
+    setLendoBo(true);
+    try {
+      const texto = await lerImagem(file, () => {});
+      const r = interpretarBO(texto);
+      const o = interpretarTexto(texto, nomesLojas);
+      setBo((prev) => ({
+        numero: r.numero || prev.numero,
+        delegacia: r.delegacia || prev.delegacia,
+        data: r.data || prev.data,
+      }));
+      // complementa dados da OS que ainda estiverem vazios
+      setForm((prev) => ({
+        ...prev,
+        data: prev.data || o.data,
+        loja: prev.loja || o.loja,
+        setor: prev.setor || o.setor,
+        ocorrencia: prev.ocorrencia || o.ocorrencia,
+        descricao: prev.descricao || o.descricao,
+        gravidade: prev.ocorrencia ? prev.gravidade : o.ocorrencia ? o.gravidade : prev.gravidade,
+      }));
+      if (r.numero) toast.success(`BO identificado: ${r.numero}`);
+      else toast.info("Número do BO não identificado. Digite manualmente.");
+    } catch {
+      toast.error("Não foi possível ler a imagem do BO.");
+    } finally {
+      setLendoBo(false);
     }
   };
 

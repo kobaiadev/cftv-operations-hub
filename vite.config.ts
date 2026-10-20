@@ -20,6 +20,7 @@ export default defineConfig({
         "@radix-ui/react-popover",
         "@radix-ui/react-dropdown-menu",
         "@radix-ui/react-tabs",
+        "zod",
         "@radix-ui/react-checkbox",
         "@radix-ui/react-label",
         "lucide-react",

@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { LayoutDashboard, ClipboardList, Cctv, Settings, ShieldCheck } from "lucide-react";
+import { LayoutDashboard, ClipboardList, Cctv, Settings, ShieldCheck, UserPlus } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -17,6 +17,7 @@ const items = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Ordens de Serviço", url: "/ordens", icon: ClipboardList },
   { title: "Reservas CFTV", url: "/reservas", icon: Cctv },
+  { title: "Cadastro", url: "/cadastro", icon: UserPlus },
   { title: "Configurações", url: "/configuracoes", icon: Settings },
 ] as const;
 

@@ -19,7 +19,7 @@ export type OS = {
   gravidade: Severity;
   status: OSStatus;
   printNome?: string | undefined;
-  reserva?: Reserva;
+  reserva?: Reserva | undefined;
 };
 
 type State = { ordens: OS[] };

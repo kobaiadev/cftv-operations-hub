@@ -7,7 +7,6 @@ import {
   Loader2,
   ScanText,
   Trash2,
-  Upload,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";

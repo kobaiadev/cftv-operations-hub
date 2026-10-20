@@ -18,7 +18,7 @@ export type OS = {
   descricao: string;
   gravidade: Severity;
   status: OSStatus;
-  printNome?: string;
+  printNome?: string | undefined;
   reserva?: Reserva;
 };
 

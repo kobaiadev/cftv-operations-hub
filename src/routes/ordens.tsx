@@ -513,6 +513,7 @@ function OrdensPage() {
               <TableHead className="hidden md:table-cell">Ocorrência</TableHead>
               <TableHead>Gravidade</TableHead>
               <TableHead>Reserva</TableHead>
+              <TableHead>BO</TableHead>
               <TableHead className="pr-5">Status</TableHead>
             </TableRow>
           </TableHeader>
@@ -537,6 +538,18 @@ function OrdensPage() {
                       title={`Print: ${o.reserva.imagemNome} — vinculada em ${o.reserva.vinculadaEm}`}
                     >
                       <Link2 className="size-3" /> {o.reserva.numero}
+                    </span>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">—</span>
+                  )}
+                </TableCell>
+                <TableCell>
+                  {o.bo ? (
+                    <span
+                      className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted px-2 py-0.5 font-mono text-xs"
+                      title={`${o.bo.delegacia || "Delegacia não informada"} — ${o.bo.data || "sem data"}`}
+                    >
+                      <FileText className="size-3" /> {o.bo.numero}
                     </span>
                   ) : (
                     <span className="text-xs text-muted-foreground">—</span>

@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { X } from "lucide-react";
+import { useOS, type Severity, type OSStatus } from "@/lib/os-store";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -42,32 +43,22 @@ const kpis: { label: string; value: number; delta: string; icon: LucideIcon; ton
   { label: "Concluídas", value: 189, delta: "76% do total", icon: CheckCircle2, tone: "success" },
 ];
 
-type Severity = "Baixa" | "Média" | "Alta";
-type Status = "Aguardando Imagens" | "Em Análise" | "Concluída";
-
-const ordens: { id: string; data: string; loja: string; setor: string; ocorrencia: string; descricao: string; gravidade: Severity; status: Status }[] = [
-  { id: "OS-2481", data: "20/10/2026 18:42", loja: "Loja 014 — Centro", setor: "Açougue", ocorrencia: "Furto de carnes nobres", descricao: "Cliente identificado como João ocultou peças de picanha na mochila.", gravidade: "Alta", status: "Aguardando Imagens" },
-  { id: "OS-2480", data: "20/10/2026 16:10", loja: "Loja 007 — Vila Nova", setor: "Frente de Caixa", ocorrencia: "Divergência de sangria", descricao: "Operadora Maria relatou diferença de R$ 200 na sangria do caixa 05.", gravidade: "Média", status: "Em Análise" },
-  { id: "OS-2479", data: "20/10/2026 11:25", loja: "Loja 022 — Jardins", setor: "Bebidas", ocorrencia: "Avaria de destilados", descricao: "Repositor derrubou caixa de whisky durante abastecimento.", gravidade: "Baixa", status: "Concluída" },
-  { id: "OS-2478", data: "19/10/2026 21:03", loja: "Loja 014 — Centro", setor: "Perfumaria", ocorrencia: "Violação de embalagem", descricao: "Embalagens de perfume abertas próximas ao corredor 12, suspeito saiu de carro prata.", gravidade: "Média", status: "Em Análise" },
-  { id: "OS-2477", data: "19/10/2026 14:47", loja: "Loja 003 — Matriz", setor: "Recebimento", ocorrencia: "Falta em nota fiscal", descricao: "Motorista do caminhão entregou 3 volumes a menos que a nota.", gravidade: "Alta", status: "Concluída" },
-];
 
 const sevCls: Record<Severity, string> = {
   Baixa: "bg-success/15 text-success border-success/30",
   Média: "bg-warning/15 text-warning border-warning/30",
   Alta: "bg-destructive/15 text-destructive border-destructive/30",
 };
-const statusCls: Record<Status, string> = {
+const statusCls: Record<OSStatus, string> = {
   "Aguardando Imagens": "bg-warning",
   "Em Análise": "bg-info",
   Concluída: "bg-success",
 };
 
 const norm = (t: string) => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-const lojas = Array.from(new Set(ordens.map((o) => o.loja))).sort();
-
 function Dashboard() {
+  const { ordens } = useOS();
+  const lojas = useMemo(() => Array.from(new Set(ordens.map((o) => o.loja))).sort(), [ordens]);
   const [loja, setLoja] = useState("todas");
   const [data, setData] = useState("");
   const [termo, setTermo] = useState("");

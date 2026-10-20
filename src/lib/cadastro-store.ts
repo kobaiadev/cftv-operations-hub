@@ -1,16 +1,16 @@
 import { useSyncExternalStore } from "react";
 
-export type Loja = { id: string; codigo: string; nome: string; endereco: string; telefone: string };
+export type Loja = { id: string; nome: string; gerente: string; endereco: string; telefone: string };
 export type Funcao = "gerente" | "fiscal" | "seguranca";
 export type Pessoa = { id: string; funcao: Funcao; nome: string; matricula: string; telefone: string; lojaId: string; turno: string };
 
 type State = { lojas: Loja[]; pessoas: Pessoa[] };
 
-const KEY = "pp-cadastro-v1";
+const KEY = "pp-cadastro-v2";
 const seed: State = {
   lojas: [
-    { id: "l1", codigo: "003", nome: "Matriz", endereco: "Av. Principal, 1000", telefone: "(11) 4000-0003" },
-    { id: "l2", codigo: "014", nome: "Centro", endereco: "Rua XV de Novembro, 250", telefone: "(11) 4000-0014" },
+    { id: "l1", nome: "Loja Matriz", gerente: "Carlos Mendes", endereco: "Av. Principal, 1000", telefone: "(11) 4000-0003" },
+    { id: "l2", nome: "Loja Centro", gerente: "Fernanda Rocha", endereco: "Rua XV de Novembro, 250", telefone: "(11) 4000-0014" },
   ],
   pessoas: [
     { id: "p1", funcao: "gerente", nome: "Carlos Mendes", matricula: "10234", telefone: "(11) 98888-1001", lojaId: "l1", turno: "Integral" },
@@ -54,6 +54,8 @@ export function useCadastro() {
   return {
     ...s,
     addLoja: (l: Omit<Loja, "id">) => set({ ...state, lojas: [...state.lojas, { ...l, id: uid() }] }),
+    updateLoja: (id: string, l: Omit<Loja, "id">) =>
+      set({ ...state, lojas: state.lojas.map((x) => (x.id === id ? { ...l, id } : x)) }),
     removeLoja: (id: string) =>
       set({ lojas: state.lojas.filter((l) => l.id !== id), pessoas: state.pessoas.filter((p) => p.lojaId !== id) }),
     addPessoa: (p: Omit<Pessoa, "id">) => set({ ...state, pessoas: [...state.pessoas, { ...p, id: uid() }] }),

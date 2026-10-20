@@ -56,9 +56,9 @@ const statusCls: Record<OSStatus, string> = {
 };
 
 const norm = (t: string) => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-const lojas = Array.from(new Set(ordens.map((o) => o.loja))).sort();
-
 function Dashboard() {
+  const { ordens } = useOS();
+  const lojas = useMemo(() => Array.from(new Set(ordens.map((o) => o.loja))).sort(), [ordens]);
   const [loja, setLoja] = useState("todas");
   const [data, setData] = useState("");
   const [termo, setTermo] = useState("");

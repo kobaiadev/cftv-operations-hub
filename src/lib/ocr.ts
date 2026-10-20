@@ -91,6 +91,25 @@ export function interpretarTexto(texto: string, lojasCadastradas: string[]): Ocr
   return { texto, data, loja, setor, ocorrencia, descricao, gravidade, reservaNumero };
 }
 
+export type BoResult = { numero: string; delegacia: string; data: string };
+
+/** Extrai número do BO, delegacia e data a partir do texto de um Boletim de Ocorrência. */
+export function interpretarBO(texto: string): BoResult {
+  const n = norm(texto);
+  const mNum =
+    n.match(/(?:boletim de ocorrencia|b\.?\s?o\.?)\s*(?:n[ºo°.]*\s*|numero\s*)?[:\-]?\s*([a-z]{0,3}\d[\d./-]{3,})/) ??
+    n.match(/n[ºo°]\s*[:\-]?\s*(\d[\d./-]{3,})/);
+  const numero = mNum?.[1]?.toUpperCase() ?? "";
+  const linhaDp = texto
+    .split(/\n+/)
+    .map((l) => l.trim())
+    .find((l) => /delegacia|distrito policial|\bd\.?p\.?\b/i.test(l));
+  const delegacia = linhaDp ? linhaDp.slice(0, 120) : "";
+  const mData = texto.match(/(\d{2}\/\d{2}\/\d{4})(?:\s+(\d{2}:\d{2}))?/);
+  const data = mData ? `${mData[1]}${mData[2] ? ` ${mData[2]}` : ""}` : "";
+  return { numero, delegacia, data };
+}
+
 /** Executa OCR em uma imagem (somente no navegador). */
 export async function lerImagem(
   file: File,

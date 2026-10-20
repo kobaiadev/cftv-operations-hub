@@ -20,6 +20,14 @@ export type OS = {
   status: OSStatus;
   printNome?: string | undefined;
   reserva?: Reserva | undefined;
+  bo?: BoletimOcorrencia | undefined;
+};
+
+export type BoletimOcorrencia = {
+  numero: string;
+  delegacia: string;
+  data: string;
+  imagemNome: string;
 };
 
 type State = { ordens: OS[] };

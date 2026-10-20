@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useRef, useState } from "react";
 import {
   ClipboardList,
+  FileText,
   ImageUp,
   Link2,
   Loader2,
@@ -30,7 +31,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useOS, nowBR, type Severity } from "@/lib/os-store";
 import { useCadastro } from "@/lib/cadastro-store";
-import { interpretarTexto, lerImagem } from "@/lib/ocr";
+import { interpretarBO, interpretarTexto, lerImagem } from "@/lib/ocr";
 
 export const Route = createFileRoute("/ordens")({
   head: () => ({
@@ -115,6 +116,13 @@ function OrdensPage() {
   const [resNumero, setResNumero] = useState("");
   const [lendoRes, setLendoRes] = useState(false);
 
+  // ---- Boletim de Ocorrência ----
+  const boInput = useRef<HTMLInputElement>(null);
+  const [boFile, setBoFile] = useState<File | null>(null);
+  const [boUrl, setBoUrl] = useState("");
+  const [bo, setBo] = useState({ numero: "", delegacia: "", data: "" });
+  const [lendoBo, setLendoBo] = useState(false);
+
   const [osGerada, setOsGerada] = useState<string | null>(null);
 
   const escolherPrint = (f: File | undefined) => {
@@ -122,25 +130,26 @@ function OrdensPage() {
     setPrintFile(f);
     setPrintUrl(URL.createObjectURL(f));
     setOsGerada(null);
+    void lerPrint(f);
   };
 
-  const lerPrint = async () => {
-    if (!printFile) return;
+  const lerPrint = async (file: File | null = printFile) => {
+    if (!file) return;
     setLendo(true);
     setProgresso(0);
     try {
-      const texto = await lerImagem(printFile, setProgresso);
+      const texto = await lerImagem(file, setProgresso);
       const r = interpretarTexto(texto, nomesLojas);
-      setForm({
-        data: r.data || nowBR(),
-        loja: r.loja,
-        setor: r.setor,
-        ocorrencia: r.ocorrencia,
-        descricao: r.descricao,
-        gravidade: r.gravidade,
-      });
-      if (r.reservaNumero && !resNumero) setResNumero(r.reservaNumero);
-      toast.success("Print lido. Confira os dados antes de gerar a OS.");
+      setForm((prev) => ({
+        data: r.data || prev.data || nowBR(),
+        loja: r.loja || prev.loja,
+        setor: r.setor || prev.setor,
+        ocorrencia: r.ocorrencia || prev.ocorrencia,
+        descricao: r.descricao || prev.descricao,
+        gravidade: r.ocorrencia ? r.gravidade : prev.gravidade,
+      }));
+      if (r.reservaNumero) setResNumero((v) => v || r.reservaNumero);
+      toast.success("Print lido e dados preenchidos. Confira antes de gerar a OS.");
     } catch {
       toast.error("Não foi possível ler a imagem. Tente um print mais nítido.");
     } finally {
@@ -152,13 +161,14 @@ function OrdensPage() {
     if (!f) return;
     setResFile(f);
     setResUrl(URL.createObjectURL(f));
+    void lerReserva(f);
   };
 
-  const lerReserva = async () => {
-    if (!resFile) return;
+  const lerReserva = async (file: File | null = resFile) => {
+    if (!file) return;
     setLendoRes(true);
     try {
-      const texto = await lerImagem(resFile, () => {});
+      const texto = await lerImagem(file, () => {});
       const r = interpretarTexto(texto, nomesLojas);
       if (r.reservaNumero) {
         setResNumero(r.reservaNumero);
@@ -170,6 +180,44 @@ function OrdensPage() {
       toast.error("Não foi possível ler a imagem da reserva.");
     } finally {
       setLendoRes(false);
+    }
+  };
+
+  const escolherBo = (f: File | undefined) => {
+    if (!f) return;
+    setBoFile(f);
+    setBoUrl(URL.createObjectURL(f));
+    void lerBo(f);
+  };
+
+  const lerBo = async (file: File | null = boFile) => {
+    if (!file) return;
+    setLendoBo(true);
+    try {
+      const texto = await lerImagem(file, () => {});
+      const r = interpretarBO(texto);
+      const o = interpretarTexto(texto, nomesLojas);
+      setBo((prev) => ({
+        numero: r.numero || prev.numero,
+        delegacia: r.delegacia || prev.delegacia,
+        data: r.data || prev.data,
+      }));
+      // complementa dados da OS que ainda estiverem vazios
+      setForm((prev) => ({
+        ...prev,
+        data: prev.data || o.data,
+        loja: prev.loja || o.loja,
+        setor: prev.setor || o.setor,
+        ocorrencia: prev.ocorrencia || o.ocorrencia,
+        descricao: prev.descricao || o.descricao,
+        gravidade: prev.ocorrencia ? prev.gravidade : o.ocorrencia ? o.gravidade : prev.gravidade,
+      }));
+      if (r.numero) toast.success(`BO identificado: ${r.numero}`);
+      else toast.info("Número do BO não identificado. Digite manualmente.");
+    } catch {
+      toast.error("Não foi possível ler a imagem do BO.");
+    } finally {
+      setLendoBo(false);
     }
   };
 
@@ -190,12 +238,13 @@ function OrdensPage() {
       reserva: temReserva
         ? { numero: resNumero.trim(), imagemNome: resFile?.name ?? "—", vinculadaEm: nowBR() }
         : undefined,
+      bo: bo.numero.trim()
+        ? { numero: bo.numero.trim(), delegacia: bo.delegacia.trim(), data: bo.data.trim(), imagemNome: boFile?.name ?? "—" }
+        : undefined,
     });
     setOsGerada(nova.id);
     toast.success(
-      temReserva
-        ? `${nova.id} gerada e vinculada à reserva ${resNumero.trim()}.`
-        : `${nova.id} gerada com sucesso.`,
+      `${nova.id} gerada${temReserva ? ` · reserva ${resNumero.trim()}` : ""}${bo.numero.trim() ? ` · BO ${bo.numero.trim()}` : ""}.`,
     );
     // limpa o formulário para a próxima OS
     setPrintFile(null);
@@ -203,6 +252,9 @@ function OrdensPage() {
     setResFile(null);
     setResUrl("");
     setResNumero("");
+    setBoFile(null);
+    setBoUrl("");
+    setBo({ numero: "", delegacia: "", data: "" });
     setForm({ data: "", loja: "", setor: "", ocorrencia: "", descricao: "", gravidade: "Média" });
   };
 
@@ -211,7 +263,7 @@ function OrdensPage() {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Ordens de Serviço</h1>
         <p className="text-sm text-muted-foreground">
-          Envie o print da ocorrência e o print da reserva de imagem — a OS é gerada já vinculada à reserva.
+          Envie os prints da ocorrência, da reserva de imagem e do Boletim de Ocorrência — tudo é lido e vinculado à OS.
         </p>
       </div>
 
@@ -220,10 +272,10 @@ function OrdensPage() {
           <ScanText className="size-4 text-primary" /> Nova OS a partir de print
         </h2>
         <p className="mb-4 text-xs text-muted-foreground">
-          O sistema lê os prints e preenche os dados automaticamente.
+          Ao enviar cada imagem, o sistema lê e preenche os dados automaticamente.
         </p>
 
-        <div className="grid gap-6 lg:grid-cols-2">
+        <div className="grid gap-6 lg:grid-cols-3">
           {/* Print da ocorrência */}
           <div>
             <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -244,14 +296,14 @@ function OrdensPage() {
             />
             {printFile && (
               <div className="mt-3 flex items-center gap-2">
-                <Button onClick={lerPrint} disabled={lendo} className="flex-1">
+                <Button onClick={() => lerPrint()} disabled={lendo} variant="outline" className="flex-1">
                   {lendo ? (
                     <>
                       <Loader2 className="animate-spin" /> Lendo print… {progresso}%
                     </>
                   ) : (
                     <>
-                      <ScanText /> Ler print e preencher OS
+                      <ScanText /> Ler novamente
                     </>
                   )}
                 </Button>
@@ -295,14 +347,14 @@ function OrdensPage() {
             />
             {resFile && (
               <div className="mt-3 flex items-center gap-2">
-                <Button onClick={lerReserva} disabled={lendoRes} variant="outline" className="flex-1">
+                <Button onClick={() => lerReserva()} disabled={lendoRes} variant="outline" className="flex-1">
                   {lendoRes ? (
                     <>
                       <Loader2 className="animate-spin" /> Lendo número…
                     </>
                   ) : (
                     <>
-                      <ScanText /> Ler número da reserva
+                      <ScanText /> Ler novamente
                     </>
                   )}
                 </Button>
@@ -330,12 +382,69 @@ function OrdensPage() {
               </Field>
             </div>
           </div>
+
+          {/* Boletim de Ocorrência */}
+          <div>
+            <p className="mb-2 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              <FileText className="size-3.5 text-primary" /> 3. Boletim de Ocorrência
+            </p>
+            <input
+              ref={boInput}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => escolherBo(e.target.files?.[0])}
+            />
+            <UploadBox
+              url={boUrl}
+              alt="Print do Boletim de Ocorrência"
+              texto="Clique para enviar o print do BO"
+              onClick={() => boInput.current?.click()}
+            />
+            {boFile && (
+              <div className="mt-3 flex items-center gap-2">
+                <Button onClick={() => lerBo()} disabled={lendoBo} variant="outline" className="flex-1">
+                  {lendoBo ? (
+                    <>
+                      <Loader2 className="animate-spin" /> Lendo BO…
+                    </>
+                  ) : (
+                    <>
+                      <ScanText /> Ler novamente
+                    </>
+                  )}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    setBoFile(null);
+                    setBoUrl("");
+                  }}
+                  aria-label="Remover print do BO"
+                >
+                  <Trash2 />
+                </Button>
+              </div>
+            )}
+            <div className="mt-3 space-y-3">
+              <Field label="Número do BO">
+                <Input value={bo.numero} onChange={(e) => setBo({ ...bo, numero: e.target.value })} placeholder="Ex.: AB1234/2026" className="font-mono" />
+              </Field>
+              <Field label="Delegacia">
+                <Input value={bo.delegacia} onChange={(e) => setBo({ ...bo, delegacia: e.target.value })} placeholder="Ex.: 3º Distrito Policial" />
+              </Field>
+              <Field label="Data do registro">
+                <Input value={bo.data} onChange={(e) => setBo({ ...bo, data: e.target.value })} placeholder="dd/mm/aaaa" />
+              </Field>
+            </div>
+          </div>
         </div>
 
         {/* Dados da OS */}
         <div className="mt-6 border-t border-border pt-5">
           <p className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            3. Dados da OS
+            4. Dados da OS
           </p>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Field label="Data da ocorrência">
@@ -404,6 +513,7 @@ function OrdensPage() {
               <TableHead className="hidden md:table-cell">Ocorrência</TableHead>
               <TableHead>Gravidade</TableHead>
               <TableHead>Reserva</TableHead>
+              <TableHead>BO</TableHead>
               <TableHead className="pr-5">Status</TableHead>
             </TableRow>
           </TableHeader>
@@ -428,6 +538,18 @@ function OrdensPage() {
                       title={`Print: ${o.reserva.imagemNome} — vinculada em ${o.reserva.vinculadaEm}`}
                     >
                       <Link2 className="size-3" /> {o.reserva.numero}
+                    </span>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">—</span>
+                  )}
+                </TableCell>
+                <TableCell>
+                  {o.bo ? (
+                    <span
+                      className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted px-2 py-0.5 font-mono text-xs"
+                      title={`${o.bo.delegacia || "Delegacia não informada"} — ${o.bo.data || "sem data"}`}
+                    >
+                      <FileText className="size-3" /> {o.bo.numero}
                     </span>
                   ) : (
                     <span className="text-xs text-muted-foreground">—</span>

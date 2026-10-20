@@ -52,7 +52,7 @@ function CadastroPage() {
   );
 }
 
-function Field({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) {
+function Field({ label, error, children }: { label: string; error?: string | undefined; children: React.ReactNode }) {
   return (
     <div className="space-y-1.5">
       <label className="text-xs font-medium text-muted-foreground">{label}</label>
@@ -104,16 +104,16 @@ function LojasTab() {
     <div className="grid gap-6 lg:grid-cols-[360px_1fr]">
       <Panel title="Nova loja">
         <form onSubmit={submit} className="space-y-4 p-5">
-          <Field label="Código" error={errors.codigo}>
+          <Field label="Código" error={errors["codigo"]}>
             <Input value={form.codigo} onChange={(e) => setForm({ ...form, codigo: e.target.value })} placeholder="014" />
           </Field>
-          <Field label="Nome da loja" error={errors.nome}>
+          <Field label="Nome da loja" error={errors["nome"]}>
             <Input value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} placeholder="Centro" />
           </Field>
-          <Field label="Endereço" error={errors.endereco}>
+          <Field label="Endereço" error={errors["endereco"]}>
             <Input value={form.endereco} onChange={(e) => setForm({ ...form, endereco: e.target.value })} />
           </Field>
-          <Field label="Telefone" error={errors.telefone}>
+          <Field label="Telefone" error={errors["telefone"]}>
             <Input value={form.telefone} onChange={(e) => setForm({ ...form, telefone: e.target.value })} placeholder="(11) 4000-0000" />
           </Field>
           <Button type="submit" className="w-full"><Plus /> Cadastrar loja</Button>
@@ -188,16 +188,16 @@ function PessoasTab({ funcao, label, plural }: { funcao: Funcao; label: string; 
     <div className="grid gap-6 lg:grid-cols-[360px_1fr]">
       <Panel title={`Novo ${label.toLowerCase()}`}>
         <form onSubmit={submit} className="space-y-4 p-5">
-          <Field label="Nome completo" error={errors.nome}>
+          <Field label="Nome completo" error={errors["nome"]}>
             <Input value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} />
           </Field>
-          <Field label="Matrícula" error={errors.matricula}>
+          <Field label="Matrícula" error={errors["matricula"]}>
             <Input value={form.matricula} onChange={(e) => setForm({ ...form, matricula: e.target.value })} />
           </Field>
-          <Field label="Telefone" error={errors.telefone}>
+          <Field label="Telefone" error={errors["telefone"]}>
             <Input value={form.telefone} onChange={(e) => setForm({ ...form, telefone: e.target.value })} placeholder="(11) 90000-0000" />
           </Field>
-          <Field label="Loja" error={errors.lojaId}>
+          <Field label="Loja" error={errors["lojaId"]}>
             <Select value={form.lojaId} onValueChange={(v) => setForm({ ...form, lojaId: v })}>
               <SelectTrigger className="w-full"><SelectValue placeholder={lojas.length ? "Selecione" : "Cadastre uma loja primeiro"} /></SelectTrigger>
               <SelectContent>
@@ -205,7 +205,7 @@ function PessoasTab({ funcao, label, plural }: { funcao: Funcao; label: string; 
               </SelectContent>
             </Select>
           </Field>
-          <Field label="Turno" error={errors.turno}>
+          <Field label="Turno" error={errors["turno"]}>
             <Select value={form.turno} onValueChange={(v) => setForm({ ...form, turno: v })}>
               <SelectTrigger className="w-full"><SelectValue placeholder="Selecione" /></SelectTrigger>
               <SelectContent>

@@ -37,9 +37,9 @@ export const Route = createFileRoute("/ordens")({
   head: () => ({
     meta: [
       { title: "Ordens de Serviço — Controle PP" },
-      { name: "description", content: "Gere OS a partir de prints e vincule reservas de imagem do CFTV." },
+      { name: "description", content: "Gere OS a partir de prints já vinculadas à reserva de imagem do CFTV." },
       { property: "og:title", content: "Ordens de Serviço — Controle PP" },
-      { property: "og:description", content: "Gere OS a partir de prints e vincule reservas de imagem do CFTV." },
+      { property: "og:description", content: "Gere OS a partir de prints já vinculadas à reserva de imagem do CFTV." },
     ],
   }),
   component: OrdensPage,
@@ -60,12 +60,41 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
+function UploadBox({
+  url,
+  alt,
+  texto,
+  onClick,
+}: {
+  url: string;
+  alt: string;
+  texto: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex w-full items-center justify-center gap-3 rounded-lg border border-dashed border-border bg-background/40 px-4 py-5 text-sm text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
+    >
+      {url ? (
+        <img src={url} alt={alt} className="max-h-36 rounded-md object-contain" />
+      ) : (
+        <>
+          <ImageUp className="size-5 text-primary" />
+          {texto}
+        </>
+      )}
+    </button>
+  );
+}
+
 function OrdensPage() {
-  const { ordens, addOS, linkReserva, removeOS } = useOS();
+  const { ordens, addOS, removeOS } = useOS();
   const { lojas } = useCadastro();
   const nomesLojas = lojas.map((l) => l.nome);
 
-  // ---- Etapa 1: print da ocorrência -> gera a OS ----
+  // ---- Print da ocorrência ----
   const printInput = useRef<HTMLInputElement>(null);
   const [printFile, setPrintFile] = useState<File | null>(null);
   const [printUrl, setPrintUrl] = useState("");
@@ -79,6 +108,14 @@ function OrdensPage() {
     descricao: "",
     gravidade: "Média" as Severity,
   });
+
+  // ---- Reserva de imagem (dentro da mesma OS) ----
+  const resInput = useRef<HTMLInputElement>(null);
+  const [resFile, setResFile] = useState<File | null>(null);
+  const [resUrl, setResUrl] = useState("");
+  const [resNumero, setResNumero] = useState("");
+  const [lendoRes, setLendoRes] = useState(false);
+
   const [osGerada, setOsGerada] = useState<string | null>(null);
 
   const escolherPrint = (f: File | undefined) => {
@@ -103,6 +140,7 @@ function OrdensPage() {
         descricao: r.descricao,
         gravidade: r.gravidade,
       });
+      if (r.reservaNumero && !resNumero) setResNumero(r.reservaNumero);
       toast.success("Print lido. Confira os dados antes de gerar a OS.");
     } catch {
       toast.error("Não foi possível ler a imagem. Tente um print mais nítido.");
@@ -110,33 +148,6 @@ function OrdensPage() {
       setLendo(false);
     }
   };
-
-  const gerarOS = () => {
-    if (!form.ocorrencia.trim()) {
-      toast.error("Informe o tipo de ocorrência antes de gerar a OS.");
-      return;
-    }
-    const nova = addOS({
-      data: form.data || nowBR(),
-      loja: form.loja || "Não identificada",
-      setor: form.setor || "—",
-      ocorrencia: form.ocorrencia,
-      descricao: form.descricao,
-      gravidade: form.gravidade,
-      printNome: printFile?.name,
-    });
-    setOsGerada(nova.id);
-    setResOs(nova.id);
-    toast.success(`${nova.id} gerada com sucesso. Agora vincule a reserva de imagem.`);
-  };
-
-  // ---- Etapa 2: print da reserva -> vincula à OS ----
-  const resInput = useRef<HTMLInputElement>(null);
-  const [resFile, setResFile] = useState<File | null>(null);
-  const [resUrl, setResUrl] = useState("");
-  const [resOs, setResOs] = useState("");
-  const [resNumero, setResNumero] = useState("");
-  const [lendoRes, setLendoRes] = useState(false);
 
   const escolherReserva = (f: File | undefined) => {
     if (!f) return;
@@ -163,24 +174,37 @@ function OrdensPage() {
     }
   };
 
-  const vincular = () => {
-    if (!resOs) {
-      toast.error("Selecione a OS que receberá a reserva.");
+  const gerarOS = () => {
+    if (!form.ocorrencia.trim()) {
+      toast.error("Informe o tipo de ocorrência antes de gerar a OS.");
       return;
     }
-    if (!resNumero.trim()) {
-      toast.error("Informe o número da reserva.");
-      return;
-    }
-    linkReserva(resOs, {
-      numero: resNumero.trim(),
-      imagemNome: resFile?.name ?? "—",
-      vinculadaEm: nowBR(),
+    const temReserva = resNumero.trim() !== "";
+    const nova = addOS({
+      data: form.data || nowBR(),
+      loja: form.loja || "Não identificada",
+      setor: form.setor || "—",
+      ocorrencia: form.ocorrencia,
+      descricao: form.descricao,
+      gravidade: form.gravidade,
+      printNome: printFile?.name,
+      reserva: temReserva
+        ? { numero: resNumero.trim(), imagemNome: resFile?.name ?? "—", vinculadaEm: nowBR() }
+        : undefined,
     });
-    toast.success(`Reserva ${resNumero.trim()} vinculada à ${resOs}.`);
+    setOsGerada(nova.id);
+    toast.success(
+      temReserva
+        ? `${nova.id} gerada e vinculada à reserva ${resNumero.trim()}.`
+        : `${nova.id} gerada com sucesso.`,
+    );
+    // limpa o formulário para a próxima OS
+    setPrintFile(null);
+    setPrintUrl("");
     setResFile(null);
     setResUrl("");
     setResNumero("");
+    setForm({ data: "", loja: "", setor: "", ocorrencia: "", descricao: "", gravidade: "Média" });
   };
 
   return (
@@ -188,75 +212,133 @@ function OrdensPage() {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Ordens de Serviço</h1>
         <p className="text-sm text-muted-foreground">
-          Envie o print da ocorrência para gerar a OS automaticamente e vincule a reserva de imagem do CFTV.
+          Envie o print da ocorrência e o print da reserva de imagem — a OS é gerada já vinculada à reserva.
         </p>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-2">
-        {/* Etapa 1 — gerar OS */}
-        <div className="rounded-lg border border-border bg-card p-5 shadow-card">
-          <h2 className="mb-1 flex items-center gap-2 font-semibold">
-            <ScanText className="size-4 text-primary" /> Nova OS a partir de print
-          </h2>
-          <p className="mb-4 text-xs text-muted-foreground">
-            O sistema lê o print e preenche os dados da OS automaticamente.
-          </p>
+      <div className="rounded-lg border border-border bg-card p-5 shadow-card">
+        <h2 className="mb-1 flex items-center gap-2 font-semibold">
+          <ScanText className="size-4 text-primary" /> Nova OS a partir de print
+        </h2>
+        <p className="mb-4 text-xs text-muted-foreground">
+          O sistema lê os prints e preenche os dados automaticamente.
+        </p>
 
-          <input
-            ref={printInput}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={(e) => escolherPrint(e.target.files?.[0])}
-          />
-          <button
-            type="button"
-            onClick={() => printInput.current?.click()}
-            className="flex w-full items-center justify-center gap-3 rounded-lg border border-dashed border-border bg-background/40 px-4 py-6 text-sm text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
-          >
-            {printUrl ? (
-              <img src={printUrl} alt="Print da ocorrência" className="max-h-40 rounded-md object-contain" />
-            ) : (
-              <>
-                <ImageUp className="size-5 text-primary" />
-                Clique para enviar o print da ocorrência
-              </>
+        <div className="grid gap-6 lg:grid-cols-2">
+          {/* Print da ocorrência */}
+          <div>
+            <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              1. Print da ocorrência
+            </p>
+            <input
+              ref={printInput}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => escolherPrint(e.target.files?.[0])}
+            />
+            <UploadBox
+              url={printUrl}
+              alt="Print da ocorrência"
+              texto="Clique para enviar o print da ocorrência"
+              onClick={() => printInput.current?.click()}
+            />
+            {printFile && (
+              <div className="mt-3 flex items-center gap-2">
+                <Button onClick={lerPrint} disabled={lendo} className="flex-1">
+                  {lendo ? (
+                    <>
+                      <Loader2 className="animate-spin" /> Lendo print… {progresso}%
+                    </>
+                  ) : (
+                    <>
+                      <ScanText /> Ler print e preencher OS
+                    </>
+                  )}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    setPrintFile(null);
+                    setPrintUrl("");
+                  }}
+                  aria-label="Remover print"
+                >
+                  <Trash2 />
+                </Button>
+              </div>
             )}
-          </button>
+            {lendo && (
+              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
+                <div className="h-full bg-primary transition-all" style={{ width: `${progresso}%` }} />
+              </div>
+            )}
+          </div>
 
-          {printFile && (
-            <div className="mt-3 flex items-center gap-2">
-              <Button onClick={lerPrint} disabled={lendo} className="flex-1">
-                {lendo ? (
-                  <>
-                    <Loader2 className="animate-spin" /> Lendo print… {progresso}%
-                  </>
-                ) : (
-                  <>
-                    <ScanText /> Ler print e preencher OS
-                  </>
-                )}
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => {
-                  setPrintFile(null);
-                  setPrintUrl("");
-                }}
-                aria-label="Remover print"
-              >
-                <Trash2 />
-              </Button>
+          {/* Reserva de imagem */}
+          <div>
+            <p className="mb-2 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              <Link2 className="size-3.5 text-primary" /> 2. Reserva de imagem (CFTV)
+            </p>
+            <input
+              ref={resInput}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => escolherReserva(e.target.files?.[0])}
+            />
+            <UploadBox
+              url={resUrl}
+              alt="Print da reserva"
+              texto="Clique para enviar o print da reserva"
+              onClick={() => resInput.current?.click()}
+            />
+            {resFile && (
+              <div className="mt-3 flex items-center gap-2">
+                <Button onClick={lerReserva} disabled={lendoRes} variant="outline" className="flex-1">
+                  {lendoRes ? (
+                    <>
+                      <Loader2 className="animate-spin" /> Lendo número…
+                    </>
+                  ) : (
+                    <>
+                      <ScanText /> Ler número da reserva
+                    </>
+                  )}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    setResFile(null);
+                    setResUrl("");
+                  }}
+                  aria-label="Remover print da reserva"
+                >
+                  <Trash2 />
+                </Button>
+              </div>
+            )}
+            <div className="mt-3">
+              <Field label="Número da reserva (vinculado a esta OS)">
+                <Input
+                  value={resNumero}
+                  onChange={(e) => setResNumero(e.target.value)}
+                  placeholder="Ex.: 45872"
+                  className="font-mono"
+                />
+              </Field>
             </div>
-          )}
-          {lendo && (
-            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
-              <div className="h-full bg-primary transition-all" style={{ width: `${progresso}%` }} />
-            </div>
-          )}
+          </div>
+        </div>
 
-          <div className="mt-5 grid gap-4 sm:grid-cols-2">
+        {/* Dados da OS */}
+        <div className="mt-6 border-t border-border pt-5">
+          <p className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            3. Dados da OS
+          </p>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Field label="Data da ocorrência">
               <Input value={form.data} onChange={(e) => setForm({ ...form, data: e.target.value })} placeholder="dd/mm/aaaa hh:mm" />
             </Field>
@@ -285,115 +367,27 @@ function OrdensPage() {
                 </SelectContent>
               </Select>
             </Field>
-            <div className="sm:col-span-2">
+            <div className="sm:col-span-2 lg:col-span-4">
               <Field label="Tipo de ocorrência">
                 <Input value={form.ocorrencia} onChange={(e) => setForm({ ...form, ocorrencia: e.target.value })} placeholder="Ex.: Furto de carnes nobres" />
               </Field>
             </div>
-            <div className="sm:col-span-2">
+            <div className="sm:col-span-2 lg:col-span-4">
               <Field label="Descrição">
                 <Textarea value={form.descricao} onChange={(e) => setForm({ ...form, descricao: e.target.value })} rows={3} placeholder="Detalhes lidos do print…" />
               </Field>
             </div>
           </div>
-
-          <Button onClick={gerarOS} variant="secondary" className="mt-4 w-full">
-            <ClipboardList /> Gerar OS
-          </Button>
-          {osGerada && (
-            <p className="mt-3 rounded-md border border-success/30 bg-success/10 px-3 py-2 text-sm text-success">
-              {osGerada} criada e registrada no painel.
-            </p>
-          )}
         </div>
 
-        {/* Etapa 2 — vincular reserva */}
-        <div className="rounded-lg border border-border bg-card p-5 shadow-card">
-          <h2 className="mb-1 flex items-center gap-2 font-semibold">
-            <Link2 className="size-4 text-primary" /> Reserva de imagem (CFTV)
-          </h2>
-          <p className="mb-4 text-xs text-muted-foreground">
-            Envie o print da reserva para vincular o número à OS gerada.
+        <Button onClick={gerarOS} variant="secondary" className="mt-5 w-full">
+          <ClipboardList /> Gerar OS{resNumero.trim() ? " e vincular reserva" : ""}
+        </Button>
+        {osGerada && (
+          <p className="mt-3 rounded-md border border-success/30 bg-success/10 px-3 py-2 text-sm text-success">
+            {osGerada} criada e registrada no painel.
           </p>
-
-          <input
-            ref={resInput}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={(e) => escolherReserva(e.target.files?.[0])}
-          />
-          <button
-            type="button"
-            onClick={() => resInput.current?.click()}
-            className="flex w-full items-center justify-center gap-3 rounded-lg border border-dashed border-border bg-background/40 px-4 py-6 text-sm text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
-          >
-            {resUrl ? (
-              <img src={resUrl} alt="Print da reserva" className="max-h-40 rounded-md object-contain" />
-            ) : (
-              <>
-                <Upload className="size-5 text-primary" />
-                Clique para enviar o print da reserva
-              </>
-            )}
-          </button>
-
-          {resFile && (
-            <div className="mt-3 flex items-center gap-2">
-              <Button onClick={lerReserva} disabled={lendoRes} variant="outline" className="flex-1">
-                {lendoRes ? (
-                  <>
-                    <Loader2 className="animate-spin" /> Lendo número…
-                  </>
-                ) : (
-                  <>
-                    <ScanText /> Ler número da reserva
-                  </>
-                )}
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => {
-                  setResFile(null);
-                  setResUrl("");
-                }}
-                aria-label="Remover print da reserva"
-              >
-                <Trash2 />
-              </Button>
-            </div>
-          )}
-
-          <div className="mt-5 grid gap-4">
-            <Field label="Vincular à OS">
-              <Select value={resOs} onValueChange={setResOs}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Selecione a OS" />
-                </SelectTrigger>
-                <SelectContent>
-                  {ordens.map((o) => (
-                    <SelectItem key={o.id} value={o.id}>
-                      {o.id} — {o.ocorrencia} ({o.loja})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
-            <Field label="Número da reserva">
-              <Input
-                value={resNumero}
-                onChange={(e) => setResNumero(e.target.value)}
-                placeholder="Ex.: 45872"
-                className="font-mono"
-              />
-            </Field>
-          </div>
-
-          <Button onClick={vincular} variant="secondary" className="mt-4 w-full">
-            <Link2 /> Vincular reserva à OS
-          </Button>
-        </div>
+        )}
       </div>
 
       {/* Lista de OS */}

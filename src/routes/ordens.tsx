@@ -32,6 +32,11 @@ import { cn } from "@/lib/utils";
 import { useOS, nowBR, type Severity } from "@/lib/os-store";
 import { useCadastro } from "@/lib/cadastro-store";
 import { interpretarBO, interpretarTexto, lerImagem } from "@/lib/ocr";
+import { arquivoParaDataUrl, salvarAnexos } from "@/lib/os-files";
+import { Paperclip } from "lucide-react";
+
+const extraVazio = () =>
+  Array.from({ length: 4 }, () => ({ file: null as File | null, url: "", lendo: false }));
 
 export const Route = createFileRoute("/ordens")({
   head: () => ({
@@ -125,6 +130,44 @@ function OrdensPage() {
 
   const [osGerada, setOsGerada] = useState<string | null>(null);
 
+  // ---- Todo o texto lido + documentos adicionais ----
+  const [adicionais, setAdicionais] = useState("");
+  const anexarTexto = (rotulo: string, texto: string) => {
+    const limpo = texto.replace(/\n{3,}/g, "\n\n").trim();
+    if (!limpo) return;
+    setAdicionais((prev) => {
+      const bloco = `[${rotulo}]\n${limpo}`;
+      const semAnterior = prev.split(/\n\n(?=\[)/).filter((b) => !b.startsWith(`[${rotulo}]`)).join("\n\n");
+      return semAnterior ? `${semAnterior}\n\n${bloco}` : bloco;
+    });
+  };
+  const [extras, setExtras] = useState(extraVazio);
+  const escolherExtra = async (i: number, f: File | undefined) => {
+    if (!f) return;
+    const url = URL.createObjectURL(f);
+    setExtras((p) => p.map((x, j) => (j === i ? { file: f, url, lendo: f.type.startsWith("image/") } : x)));
+    if (!f.type.startsWith("image/")) return;
+    try {
+      const texto = await lerImagem(f, () => {});
+      anexarTexto(`Documento adicional ${i + 1}`, texto);
+      const o = interpretarTexto(texto, nomesLojas);
+      setForm((prev) => ({
+        ...prev,
+        data: prev.data || o.data,
+        loja: prev.loja || o.loja,
+        setor: prev.setor || o.setor,
+        ocorrencia: prev.ocorrencia || o.ocorrencia,
+        descricao: prev.descricao || o.descricao,
+      }));
+      if (o.reservaNumero) setResNumero((v) => v || o.reservaNumero);
+      toast.success(`Documento adicional ${i + 1} lido.`);
+    } catch {
+      toast.error("Não foi possível ler o documento adicional.");
+    } finally {
+      setExtras((p) => p.map((x, j) => (j === i ? { ...x, lendo: false } : x)));
+    }
+  };
+
   const escolherPrint = (f: File | undefined) => {
     if (!f) return;
     setPrintFile(f);
@@ -139,6 +182,7 @@ function OrdensPage() {
     setProgresso(0);
     try {
       const texto = await lerImagem(file, setProgresso);
+      anexarTexto("Print da ocorrência", texto);
       const r = interpretarTexto(texto, nomesLojas);
       setForm((prev) => ({
         data: r.data || prev.data || nowBR(),
@@ -169,6 +213,7 @@ function OrdensPage() {
     setLendoRes(true);
     try {
       const texto = await lerImagem(file, () => {});
+      anexarTexto("Reserva de imagem (CFTV)", texto);
       const r = interpretarTexto(texto, nomesLojas);
       if (r.reservaNumero) {
         setResNumero(r.reservaNumero);
@@ -195,6 +240,7 @@ function OrdensPage() {
     setLendoBo(true);
     try {
       const texto = await lerImagem(file, () => {});
+      anexarTexto("Boletim de Ocorrência", texto);
       const r = interpretarBO(texto);
       const o = interpretarTexto(texto, nomesLojas);
       setBo((prev) => ({
@@ -221,12 +267,17 @@ function OrdensPage() {
     }
   };
 
-  const gerarOS = () => {
+  const gerarOS = async () => {
     if (!form.ocorrencia.trim()) {
       toast.error("Informe o tipo de ocorrência antes de gerar a OS.");
       return;
     }
     const temReserva = resNumero.trim() !== "";
+    const arquivos: { rotulo: string; file: File }[] = [];
+    if (printFile) arquivos.push({ rotulo: "Print da ocorrência", file: printFile });
+    if (resFile) arquivos.push({ rotulo: "Print da reserva de imagem (CFTV)", file: resFile });
+    if (boFile) arquivos.push({ rotulo: "Boletim de Ocorrência", file: boFile });
+    extras.forEach((x, i) => x.file && arquivos.push({ rotulo: `Documento adicional ${i + 1}`, file: x.file }));
     const nova = addOS({
       data: form.data || nowBR(),
       loja: form.loja || "Não identificada",
@@ -235,6 +286,8 @@ function OrdensPage() {
       descricao: form.descricao,
       gravidade: form.gravidade,
       printNome: printFile?.name,
+      dadosAdicionais: adicionais.trim() || undefined,
+      anexosNomes: arquivos.map((a) => a.file.name),
       reserva: temReserva
         ? { numero: resNumero.trim(), imagemNome: resFile?.name ?? "—", vinculadaEm: nowBR() }
         : undefined,
@@ -242,6 +295,14 @@ function OrdensPage() {
         ? { numero: bo.numero.trim(), delegacia: bo.delegacia.trim(), data: bo.data.trim(), imagemNome: boFile?.name ?? "—" }
         : undefined,
     });
+    try {
+      const anexos = await Promise.all(
+        arquivos.map(async (a) => ({ rotulo: a.rotulo, nome: a.file.name, tipo: a.file.type, dataUrl: await arquivoParaDataUrl(a.file) })),
+      );
+      await salvarAnexos(nova.id, anexos);
+    } catch {
+      toast.error("A OS foi criada, mas não foi possível guardar as imagens.");
+    }
     setOsGerada(nova.id);
     toast.success(
       `${nova.id} gerada${temReserva ? ` · reserva ${resNumero.trim()}` : ""}${bo.numero.trim() ? ` · BO ${bo.numero.trim()}` : ""}.`,
@@ -256,6 +317,8 @@ function OrdensPage() {
     setBoUrl("");
     setBo({ numero: "", delegacia: "", data: "" });
     setForm({ data: "", loja: "", setor: "", ocorrencia: "", descricao: "", gravidade: "Média" });
+    setAdicionais("");
+    setExtras(extraVazio());
   };
 
   return (
@@ -441,6 +504,40 @@ function OrdensPage() {
           </div>
         </div>
 
+        {/* Documentos adicionais */}
+        <div className="mt-6 border-t border-border pt-5">
+          <p className="mb-3 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            <Paperclip className="size-3.5 text-primary" /> Documentos adicionais (opcional)
+          </p>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {extras.map((ex, i) => (
+              <div key={i}>
+                <input
+                  id={`extra-${i}`}
+                  type="file"
+                  accept="image/*,application/pdf"
+                  className="hidden"
+                  onChange={(e) => escolherExtra(i, e.target.files?.[0])}
+                />
+                <UploadBox
+                  url={ex.file?.type.startsWith("image/") ? ex.url : ""}
+                  alt={`Documento adicional ${i + 1}`}
+                  texto={ex.file ? ex.file.name : `Documento adicional ${i + 1}`}
+                  onClick={() => document.getElementById(`extra-${i}`)?.click()}
+                />
+                {ex.file && (
+                  <div className="mt-2 flex items-center justify-between gap-2 text-xs text-muted-foreground">
+                    <span className="truncate">{ex.lendo ? "Lendo documento…" : ex.file.name}</span>
+                    <Button variant="ghost" size="icon" onClick={() => setExtras((p) => p.map((x, j) => (j === i ? { file: null, url: "", lendo: false } : x)))} aria-label={`Remover documento ${i + 1}`}>
+                      <Trash2 />
+                    </Button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
         {/* Dados da OS */}
         <div className="mt-6 border-t border-border pt-5">
           <p className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -483,6 +580,11 @@ function OrdensPage() {
             <div className="sm:col-span-2 lg:col-span-4">
               <Field label="Descrição">
                 <Textarea value={form.descricao} onChange={(e) => setForm({ ...form, descricao: e.target.value })} rows={3} placeholder="Detalhes lidos do print…" />
+              </Field>
+            </div>
+            <div className="sm:col-span-2 lg:col-span-4">
+              <Field label="Dados adicionais lidos dos prints (todo o conteúdo identificado)">
+                <Textarea value={adicionais} onChange={(e) => setAdicionais(e.target.value)} rows={6} className="font-mono text-xs" placeholder="Todo o texto lido em cada imagem aparece aqui, inclusive informações sem campo específico." />
               </Field>
             </div>
           </div>

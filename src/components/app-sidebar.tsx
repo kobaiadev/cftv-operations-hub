@@ -1,5 +1,13 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { LayoutDashboard, ClipboardList, Cctv, Settings, ShieldCheck, UserPlus } from "lucide-react";
+import {
+  LayoutDashboard,
+  ClipboardList,
+  Cctv,
+  Settings,
+  ShieldCheck,
+  UserPlus,
+  ChartNoAxesCombined,
+} from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -14,6 +22,7 @@ import {
 } from "@/components/ui/sidebar";
 
 const items = [
+  { title: "Análise de Perdas", url: "/analise-perdas", icon: ChartNoAxesCombined },
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Ordens de Serviço", url: "/ordens", icon: ClipboardList },
   { title: "Reservas CFTV", url: "/reservas", icon: Cctv },
@@ -32,7 +41,7 @@ export function AppSidebar() {
             <ShieldCheck className="size-4" />
           </div>
           <div className="flex flex-col leading-tight group-data-[collapsible=icon]:hidden">
-            <span className="text-sm font-semibold text-foreground">Prevenção de Perdas</span>
+            <span className="text-sm font-semibold text-foreground">Segurança Patrimonial</span>
             <span className="text-xs text-muted-foreground">OS & CFTV</span>
           </div>
         </div>

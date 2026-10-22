@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AnalisePerdasRouteImport } from './routes/analise-perdas'
 import { Route as CadastroRouteImport } from './routes/cadastro'
 import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
 import { Route as OrdensRouteImport } from './routes/ordens'
@@ -18,6 +19,11 @@ import { Route as ReservasRouteImport } from './routes/reservas'
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AnalisePerdasRoute = AnalisePerdasRouteImport.update({
+  id: '/analise-perdas',
+  path: '/analise-perdas',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CadastroRoute = CadastroRouteImport.update({
@@ -43,6 +49,7 @@ const ReservasRoute = ReservasRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/analise-perdas': typeof AnalisePerdasRoute
   '/cadastro': typeof CadastroRoute
   '/configuracoes': typeof ConfiguracoesRoute
   '/ordens': typeof OrdensRoute
@@ -50,6 +57,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/analise-perdas': typeof AnalisePerdasRoute
   '/cadastro': typeof CadastroRoute
   '/configuracoes': typeof ConfiguracoesRoute
   '/ordens': typeof OrdensRoute
@@ -58,6 +66,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/analise-perdas': typeof AnalisePerdasRoute
   '/cadastro': typeof CadastroRoute
   '/configuracoes': typeof ConfiguracoesRoute
   '/ordens': typeof OrdensRoute
@@ -65,15 +74,34 @@ export interface FileRoutesById {
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/cadastro' | '/configuracoes' | '/ordens' | '/reservas'
+  fullPaths:
+    | '/'
+    | '/analise-perdas'
+    | '/cadastro'
+    | '/configuracoes'
+    | '/ordens'
+    | '/reservas'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/cadastro' | '/configuracoes' | '/ordens' | '/reservas'
+  to:
+    | '/'
+    | '/analise-perdas'
+    | '/cadastro'
+    | '/configuracoes'
+    | '/ordens'
+    | '/reservas'
   id:
-    '__root__' | '/' | '/cadastro' | '/configuracoes' | '/ordens' | '/reservas'
+    | '__root__'
+    | '/'
+    | '/analise-perdas'
+    | '/cadastro'
+    | '/configuracoes'
+    | '/ordens'
+    | '/reservas'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AnalisePerdasRoute: typeof AnalisePerdasRoute
   CadastroRoute: typeof CadastroRoute
   ConfiguracoesRoute: typeof ConfiguracoesRoute
   OrdensRoute: typeof OrdensRoute
@@ -87,6 +115,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/analise-perdas': {
+      id: '/analise-perdas'
+      path: '/analise-perdas'
+      fullPath: '/analise-perdas'
+      preLoaderRoute: typeof AnalisePerdasRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/cadastro': {
@@ -122,6 +157,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AnalisePerdasRoute: AnalisePerdasRoute,
   CadastroRoute: CadastroRoute,
   ConfiguracoesRoute: ConfiguracoesRoute,
   OrdensRoute: OrdensRoute,

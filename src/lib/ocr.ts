@@ -1,4 +1,5 @@
 import type { Severity } from "@/lib/os-store";
+import { formatarTextoFormal, limparTextoCapturado } from "@/lib/os-text";
 
 export type OcrResult = {
   texto: string;
@@ -11,11 +12,7 @@ export type OcrResult = {
   reservaNumero: string;
 };
 
-const norm = (t: string) =>
-  t
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase();
+const norm = (t: string) => t.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 
 const OCORRENCIAS: { chave: string; rotulo: string; gravidade: Severity }[] = [
   { chave: "roubo", rotulo: "Roubo", gravidade: "Alta" },
@@ -29,12 +26,24 @@ const OCORRENCIAS: { chave: string; rotulo: string; gravidade: Severity }[] = [
 ];
 
 const SETORES = [
-  "açougue", "acougue", "frente de caixa", "caixa", "bebidas", "perfumaria",
-  "recebimento", "hortifruti", "padaria", "mercearia", "estacionamento", "deposito", "depósito",
+  "açougue",
+  "acougue",
+  "frente de caixa",
+  "caixa",
+  "bebidas",
+  "perfumaria",
+  "recebimento",
+  "hortifruti",
+  "padaria",
+  "mercearia",
+  "estacionamento",
+  "deposito",
+  "depósito",
 ];
 
 /** Extrai campos de uma OS a partir do texto lido no print. */
 export function interpretarTexto(texto: string, lojasCadastradas: string[]): OcrResult {
+  texto = limparTextoCapturado(texto);
   const n = norm(texto);
 
   // Data dd/mm/aaaa (e hora opcional hh:mm)
@@ -88,33 +97,41 @@ export function interpretarTexto(texto: string, lojasCadastradas: string[]): Ocr
     .join(" ")
     .slice(0, 300);
 
-  return { texto, data, loja, setor, ocorrencia, descricao, gravidade, reservaNumero };
+  return {
+    texto,
+    data,
+    loja,
+    setor,
+    ocorrencia,
+    descricao: formatarTextoFormal(descricao),
+    gravidade,
+    reservaNumero,
+  };
 }
 
 export type BoResult = { numero: string; delegacia: string; data: string };
 
 /** Extrai número do BO, delegacia e data a partir do texto de um Boletim de Ocorrência. */
 export function interpretarBO(texto: string): BoResult {
+  texto = limparTextoCapturado(texto);
   const n = norm(texto);
   const mNum =
-    n.match(/(?:boletim de ocorrencia|b\.?\s?o\.?)\s*(?:n[ºo°.]*\s*|numero\s*)?[:\-]?\s*([a-z]{0,3}\d[\d./-]{3,})/) ??
-    n.match(/n[ºo°]\s*[:\-]?\s*(\d[\d./-]{3,})/);
+    n.match(
+      /(?:boletim de ocorrencia|b\.?\s?o\.?)\s*(?:n[ºo°.]*\s*|numero\s*)?[:-]?\s*([a-z]{0,3}\d[\d./-]{3,})/,
+    ) ?? n.match(/n[ºo°]\s*[:-]?\s*(\d[\d./-]{3,})/);
   const numero = mNum?.[1]?.toUpperCase() ?? "";
   const linhaDp = texto
     .split(/\n+/)
     .map((l) => l.trim())
     .find((l) => /delegacia|distrito policial|\bd\.?p\.?\b/i.test(l));
-  const delegacia = linhaDp ? linhaDp.slice(0, 120) : "";
+  const delegacia = linhaDp ? limparTextoCapturado(linhaDp.slice(0, 120)) : "";
   const mData = texto.match(/(\d{2}\/\d{2}\/\d{4})(?:\s+(\d{2}:\d{2}))?/);
   const data = mData ? `${mData[1]}${mData[2] ? ` ${mData[2]}` : ""}` : "";
   return { numero, delegacia, data };
 }
 
 /** Executa OCR em uma imagem (somente no navegador). */
-export async function lerImagem(
-  file: File,
-  onProgress: (pct: number) => void,
-): Promise<string> {
+export async function lerImagem(file: File, onProgress: (pct: number) => void): Promise<string> {
   const { createWorker } = await import("tesseract.js");
   const worker = await createWorker("por", 1, {
     logger: (m: { status: string; progress: number }) => {

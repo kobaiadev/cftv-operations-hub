@@ -112,6 +112,8 @@ export function useOS() {
           o.id === osId ? { ...o, reserva, status: "Em Análise" as OSStatus } : o,
         ),
       }),
+    updateOS: (id: string, updates: Partial<Omit<OS, "id">>) =>
+      set({ ordens: state.ordens.map((o) => (o.id === id ? { ...o, ...updates } : o)) }),
     removeOS: (id: string) => set({ ordens: state.ordens.filter((o) => o.id !== id) }),
   };
 }

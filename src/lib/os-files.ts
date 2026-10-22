@@ -36,7 +36,13 @@ export async function lerAnexos(osId: string): Promise<Anexo[]> {
 
 export async function removerAnexos(osId: string) {
   const db = await abrir();
-  db.transaction(STORE, "readwrite").objectStore(STORE).delete(osId);
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(STORE, "readwrite");
+    tx.objectStore(STORE).delete(osId);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error ?? new Error("A remoção dos anexos foi cancelada."));
+  });
 }
 
 export function arquivoParaDataUrl(f: File): Promise<string> {

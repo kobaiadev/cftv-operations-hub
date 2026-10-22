@@ -13,7 +13,8 @@ import { useMemo, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { X } from "lucide-react";
+import { X, Download, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { useOS, type Severity, type OSStatus } from "@/lib/os-store";
 
 export const Route = createFileRoute("/")({
@@ -62,6 +63,7 @@ function Dashboard() {
   const [loja, setLoja] = useState("todas");
   const [data, setData] = useState("");
   const [termo, setTermo] = useState("");
+  const [baixando, setBaixando] = useState<string | null>(null);
 
   const filtradas = useMemo(() => {
     const q = norm(termo.trim());
@@ -136,7 +138,7 @@ function Dashboard() {
 
       <div className="rounded-lg border border-border bg-card shadow-card">
         <div className="flex items-center justify-between border-b border-border px-5 py-4">
-          <h2 className="font-semibold">Últimas OS Registradas</h2>
+          <h2 className="font-semibold">Ordens de Serviço Registradas</h2>
           <span className="text-xs text-muted-foreground">{filtradas.length} de {ordens.length} registros</span>
         </div>
         <Table>
@@ -148,12 +150,13 @@ function Dashboard() {
               <TableHead className="hidden md:table-cell">Setor</TableHead>
               <TableHead className="hidden lg:table-cell">Ocorrência</TableHead>
               <TableHead>Gravidade</TableHead>
-              <TableHead className="pr-5">Status</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="pr-5 text-right">OS completa</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filtradas.length === 0 && (
-              <TableRow><TableCell colSpan={7} className="py-10 text-center text-muted-foreground">Nenhuma OS encontrada para os filtros informados.</TableCell></TableRow>
+              <TableRow><TableCell colSpan={8}  className="py-10 text-center text-muted-foreground">Nenhuma OS encontrada para os filtros informados.</TableCell></TableRow>
             )}
             {filtradas.map((o) => (
               <TableRow key={o.id}>
@@ -167,11 +170,31 @@ function Dashboard() {
                     {o.gravidade}
                   </span>
                 </TableCell>
-                <TableCell className="pr-5">
+                <TableCell>
                   <span className="inline-flex items-center gap-2 whitespace-nowrap text-sm">
                     <span className={cn("size-2 rounded-full", statusCls[o.status])} />
                     {o.status}
                   </span>
+                </TableCell>
+                <TableCell className="pr-5 text-right">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={baixando === o.id}
+                    onClick={async () => {
+                      setBaixando(o.id);
+                      try {
+                        const { baixarPdfOS } = await import("@/lib/os-pdf");
+                        await baixarPdfOS(o);
+                      } catch {
+                        toast.error("Não foi possível gerar o PDF.");
+                      } finally {
+                        setBaixando(null);
+                      }
+                    }}
+                  >
+                    {baixando === o.id ? <Loader2 className="animate-spin" /> : <Download />} PDF
+                  </Button>
                 </TableCell>
               </TableRow>
             ))}

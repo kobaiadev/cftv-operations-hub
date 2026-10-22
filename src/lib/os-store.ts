@@ -21,6 +21,8 @@ export type OS = {
   printNome?: string | undefined;
   reserva?: Reserva | undefined;
   bo?: BoletimOcorrencia | undefined;
+  dadosAdicionais?: string | undefined;
+  anexosNomes?: string[] | undefined;
 };
 
 export type BoletimOcorrencia = {

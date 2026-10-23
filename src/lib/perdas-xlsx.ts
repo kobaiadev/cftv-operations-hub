@@ -8,6 +8,8 @@ export type ResultadoImportacao = {
   linhasLidas: number;
 };
 
+const CHAVES_MES = ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"];
+
 const normalizar = (valor: unknown) =>
   String(valor ?? "")
     .normalize("NFD")
@@ -128,6 +130,7 @@ export async function analisarPlanilhaPerdas(
 
   const lojasPorNome = new Map(lojas.map((loja) => [normalizarLoja(loja.nome), loja]));
   const importadas = new Map<string, PerdaImportada>();
+  const linhasPorChave = new Map<string, number>();
   const erros: string[] = [];
   let linhasLidas = 0;
 
@@ -154,12 +157,18 @@ export async function analisarPlanilhaPerdas(
       const mes = lerMes(linha[colunas.mes]);
       const valor = lerValor(linha[colunas.valor]);
       const chave = `${loja.id}:${ano}:${mes}`;
-      const anterior = importadas.get(chave);
+      const linhaAnterior = linhasPorChave.get(chave);
+      if (linhaAnterior !== undefined) {
+        throw new Error(
+          `Duplicidade de loja, ano e mês; o mesmo período já aparece na linha ${linhaAnterior}.`,
+        );
+      }
+      linhasPorChave.set(chave, numeroLinha);
       importadas.set(chave, {
         lojaId: loja.id,
         ano,
         mes,
-        valor: (anterior?.valor ?? 0) + valor,
+        valor,
       });
     } catch (erro) {
       const mensagem = erro instanceof Error ? erro.message : "Dados inválidos.";
@@ -177,4 +186,55 @@ export async function analisarPlanilhaPerdas(
   }
 
   return { perdas: [...importadas.values()], linhasLidas };
+}
+
+export function validarDuplicidadesPerdas(
+  importadas: PerdaImportada[],
+  existentes: Perda[],
+): string[] {
+  const chavesExistentes = new Set(
+    existentes.map((perda) => `${perda.lojaId}:${perda.ano}:${perda.mes}`),
+  );
+  return importadas
+    .filter((perda) => chavesExistentes.has(`${perda.lojaId}:${perda.ano}:${perda.mes}`))
+    .map((perda) => `${perda.lojaId}:${perda.ano}:${perda.mes}`);
+}
+
+export type CoberturaAnualPerdas = {
+  lojaId: string;
+  loja: string;
+  ano: number;
+  mesesCarregados: string[];
+  mesesFaltantes: string[];
+};
+
+export function resumirCoberturaPerdas(
+  perdas: Pick<Perda, "lojaId" | "mes" | "ano">[],
+  lojas: Loja[],
+): CoberturaAnualPerdas[] {
+  const lojaPorId = new Map(lojas.map((loja) => [loja.id, loja.nome]));
+  const grupos = new Map<string, Set<string>>();
+
+  for (const perda of perdas) {
+    const chave = `${perda.lojaId}:${perda.ano}`;
+    const meses = grupos.get(chave) ?? new Set<string>();
+    meses.add(perda.mes);
+    grupos.set(chave, meses);
+  }
+
+  return [...grupos.entries()]
+    .map(([chave, mesesCarregadosSet]) => {
+      const separador = chave.lastIndexOf(":");
+      const lojaId = chave.slice(0, separador);
+      const ano = Number(chave.slice(separador + 1));
+      const mesesCarregados = CHAVES_MES.filter((mes) => mesesCarregadosSet.has(mes));
+      return {
+        lojaId,
+        loja: lojaPorId.get(lojaId) ?? "Loja não encontrada",
+        ano,
+        mesesCarregados,
+        mesesFaltantes: CHAVES_MES.filter((mes) => !mesesCarregadosSet.has(mes)),
+      };
+    })
+    .sort((a, b) => a.loja.localeCompare(b.loja, "pt-BR") || a.ano - b.ano);
 }

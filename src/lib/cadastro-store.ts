@@ -127,29 +127,32 @@ export function useCadastro() {
       const existente = state.perdas.find(
         (x) => x.lojaId === p.lojaId && x.mes === p.mes && x.ano === p.ano,
       );
-      const perda = { ...p, id: existente?.id ?? uid() };
+      if (existente) {
+        throw new Error("Já existe um lançamento de perdas para esta loja, mês e ano.");
+      }
       set({
         ...state,
-        perdas: existente
-          ? state.perdas.map((x) => (x.id === existente.id ? perda : x))
-          : [perda, ...state.perdas],
+        perdas: [{ ...p, id: uid() }, ...state.perdas],
       });
     },
     importPerdas: (lancamentos: Omit<Perda, "id">[]) => {
-      const chavesImportadas = new Map(
-        lancamentos.map((perda) => [`${perda.lojaId}:${perda.ano}:${perda.mes}`, perda]),
+      const chavesImportadas = new Set<string>();
+      const chavesExistentes = new Set(
+        state.perdas.map((perda) => `${perda.lojaId}:${perda.ano}:${perda.mes}`),
       );
-      const atualizadas = state.perdas.filter(
-        (perda) => !chavesImportadas.has(`${perda.lojaId}:${perda.ano}:${perda.mes}`),
-      );
-      const existentesPorChave = new Map(
-        state.perdas.map((perda) => [`${perda.lojaId}:${perda.ano}:${perda.mes}`, perda]),
-      );
-      const novas = [...chavesImportadas.entries()].map(([chave, perda]) => ({
-        ...perda,
-        id: existentesPorChave.get(chave)?.id ?? uid(),
-      }));
-      set({ ...state, perdas: [...novas, ...atualizadas] });
+      for (const perda of lancamentos) {
+        const chave = `${perda.lojaId}:${perda.ano}:${perda.mes}`;
+        if (chavesImportadas.has(chave) || chavesExistentes.has(chave)) {
+          throw new Error(
+            `Já existe um lançamento de perdas para a loja, ano e mês ${perda.lojaId}:${perda.ano}:${perda.mes}.`,
+          );
+        }
+        chavesImportadas.add(chave);
+      }
+      set({
+        ...state,
+        perdas: [...lancamentos.map((perda) => ({ ...perda, id: uid() })), ...state.perdas],
+      });
     },
     removePerda: (id: string) => set({ ...state, perdas: state.perdas.filter((p) => p.id !== id) }),
   };

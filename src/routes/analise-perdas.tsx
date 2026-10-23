@@ -21,7 +21,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useCadastro } from "@/lib/cadastro-store";
-import { analisarPlanilhaPerdas, type ResultadoImportacao } from "@/lib/perdas-xlsx";
+import {
+  analisarPlanilhaPerdas,
+  resumirCoberturaPerdas,
+  validarDuplicidadesPerdas,
+  type ResultadoImportacao,
+} from "@/lib/perdas-xlsx";
 
 export const Route = createFileRoute("/analise-perdas")({
   head: () => ({
@@ -84,6 +89,7 @@ function AnalisePerdasPage() {
       b.mes.localeCompare(a.mes) ||
       (lojaPorId.get(a.lojaId) ?? "").localeCompare(lojaPorId.get(b.lojaId) ?? ""),
   );
+  const cobertura = resumirCoberturaPerdas(perdas, lojas);
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -95,10 +101,15 @@ function AnalisePerdasPage() {
       return;
     }
 
-    addPerda(resultado.data);
-    setForm({ ...form, valor: "" });
-    setErrors({});
-    toast.success("Valor de perda registrado.");
+    try {
+      addPerda(resultado.data);
+      setForm({ ...form, valor: "" });
+      setErrors({});
+      toast.success("Valor de perda registrado.");
+    } catch (erro) {
+      const mensagem = erro instanceof Error ? erro.message : "Não foi possível registrar o valor.";
+      toast.error(mensagem);
+    }
   };
 
   const selecionarPlanilha = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -120,6 +131,18 @@ function AnalisePerdasPage() {
     setLendoPlanilha(true);
     try {
       const resultado = await analisarPlanilhaPerdas(await arquivo.arrayBuffer(), lojas);
+      const duplicidades = validarDuplicidadesPerdas(resultado.perdas, perdas);
+      if (duplicidades.length) {
+        const detalhes = duplicidades.map((chave) => {
+          const [lojaId, ano, mes] = chave.split(":");
+          const nomeLoja = lojaPorId.get(lojaId ?? "") ?? "Loja não encontrada";
+          const nomeMes = meses.find(([numero]) => numero === mes)?.[1] ?? mes;
+          return `${nomeLoja} — ${nomeMes}/${ano}`;
+        });
+        throw new Error(
+          `A planilha não foi carregada porque já existem registros para estes períodos:\n${detalhes.join("\n")}`,
+        );
+      }
       setPrevia(resultado);
       toast.success("Planilha validada. Revise a prévia e carregue os dados.");
     } catch (erro) {
@@ -306,62 +329,118 @@ function AnalisePerdasPage() {
             <div className="rounded-md border border-success/30 bg-success/10 p-4">
               <p className="font-medium text-success">Planilha validada e pronta para carregar</p>
               <p className="mt-1 text-sm text-muted-foreground">
-                {previa.linhasLidas} linhas analisadas; {previa.perdas.length} registros agrupados
-                por loja e período. A soma dos valores da prévia é{" "}
-                {moeda.format(previa.perdas.reduce((total, perda) => total + perda.valor, 0))}.
+                {previa.linhasLidas} linhas analisadas; nenhum período duplicado ou já registrado.
+                Os valores serão mantidos no armazenamento local do programa após o carregamento.
               </p>
+              <div className="mt-3 space-y-2">
+                {resumirCoberturaPerdas([...perdas, ...previa.perdas], lojas).map((item) => (
+                  <p key={`${item.lojaId}-${item.ano}`} className="text-sm">
+                    <span className="font-medium">
+                      {item.loja} — {item.ano}:
+                    </span>{" "}
+                    {item.mesesFaltantes.length === 0 ? (
+                      <span className="font-semibold text-success">OK</span>
+                    ) : (
+                      <span className="text-muted-foreground">
+                        faltam{" "}
+                        {item.mesesFaltantes
+                          .map((mes) => meses.find(([numero]) => numero === mes)?.[1] ?? mes)
+                          .join(", ")}
+                      </span>
+                    )}
+                  </p>
+                ))}
+              </div>
             </div>
           )}
         </div>
       </div>
 
       <div className="rounded-lg border border-border bg-card shadow-card">
-        <div className="flex items-center justify-between border-b border-border px-5 py-4">
-          <h2 className="font-semibold">Valores registrados</h2>
-          <span className="text-xs text-muted-foreground">{perdas.length} lançamentos</span>
+        <div className="border-b border-border px-5 py-4">
+          <h2 className="font-semibold">Cobertura dos dados por loja e ano</h2>
+          <p className="mt-1 text-xs text-muted-foreground">
+            A indicação OK confirma que os 12 meses do ano estão registrados.
+          </p>
         </div>
-        <Table>
-          <TableHeader>
-            <TableRow className="hover:bg-transparent">
-              <TableHead className="pl-5">Loja</TableHead>
-              <TableHead>Período</TableHead>
-              <TableHead className="text-right">Valor</TableHead>
-              <TableHead className="w-16 pr-5" />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {ordenadas.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={4} className="py-10 text-center text-muted-foreground">
-                  Nenhum valor de perda registrado.
-                </TableCell>
-              </TableRow>
-            )}
-            {ordenadas.map((perda) => (
-              <TableRow key={perda.id}>
-                <TableCell className="pl-5 font-medium">
-                  {lojaPorId.get(perda.lojaId) ?? "Loja não encontrada"}
-                </TableCell>
-                <TableCell>
-                  {meses.find(([valor]) => valor === perda.mes)?.[1]} de {perda.ano}
-                </TableCell>
-                <TableCell className="text-right font-mono">{moeda.format(perda.valor)}</TableCell>
-                <TableCell className="pr-5 text-right">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    aria-label={`Excluir perdas de ${lojaPorId.get(perda.lojaId) ?? "loja"} em ${perda.mes}/${perda.ano}`}
-                    onClick={() => removePerda(perda.id)}
-                  >
-                    <Trash2 className="size-4" />
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+        <div className="space-y-2 p-5">
+          {cobertura.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Nenhum dado anual carregado.</p>
+          ) : (
+            cobertura.map((item) => (
+              <p key={`${item.lojaId}-${item.ano}`} className="text-sm">
+                <span className="font-medium">
+                  {item.loja} — {item.ano}:
+                </span>{" "}
+                {item.mesesFaltantes.length === 0 ? (
+                  <span className="font-semibold text-success">OK</span>
+                ) : (
+                  <span className="text-muted-foreground">
+                    faltam{" "}
+                    {item.mesesFaltantes
+                      .map((mes) => meses.find(([numero]) => numero === mes)?.[1] ?? mes)
+                      .join(", ")}
+                  </span>
+                )}
+              </p>
+            ))
+          )}
+        </div>
       </div>
+
+      <details className="group rounded-lg border border-border bg-card shadow-card">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 font-semibold [&::-webkit-details-marker]:hidden">
+          <span>Detalhamento dos valores registrados</span>
+          <span className="text-xs font-normal text-muted-foreground">
+            {perdas.length} lançamentos · expandir para consultar ou excluir
+          </span>
+        </summary>
+        <div className="border-t border-border">
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="pl-5">Loja</TableHead>
+                <TableHead>Período</TableHead>
+                <TableHead className="text-right">Valor</TableHead>
+                <TableHead className="w-16 pr-5" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {ordenadas.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={4} className="py-10 text-center text-muted-foreground">
+                    Nenhum valor de perda registrado.
+                  </TableCell>
+                </TableRow>
+              )}
+              {ordenadas.map((perda) => (
+                <TableRow key={perda.id}>
+                  <TableCell className="pl-5 font-medium">
+                    {lojaPorId.get(perda.lojaId) ?? "Loja não encontrada"}
+                  </TableCell>
+                  <TableCell>
+                    {meses.find(([valor]) => valor === perda.mes)?.[1]} de {perda.ano}
+                  </TableCell>
+                  <TableCell className="text-right font-mono">
+                    {moeda.format(perda.valor)}
+                  </TableCell>
+                  <TableCell className="pr-5 text-right">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      aria-label={`Excluir perdas de ${lojaPorId.get(perda.lojaId) ?? "loja"} em ${perda.mes}/${perda.ano}`}
+                      onClick={() => removePerda(perda.id)}
+                    >
+                      <Trash2 className="size-4" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      </details>
     </div>
   );
 }

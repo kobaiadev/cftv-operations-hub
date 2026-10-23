@@ -196,8 +196,7 @@ function OrdensPage() {
 
   const [osGerada, setOsGerada] = useState<string | null>(null);
 
-  // ---- Todo o texto lido + documentos adicionais ----
-  const [adicionais, setAdicionais] = useState("");
+  // ---- Textos lidos usados para complementar os campos do BO ----
   const textosOcr = useRef<Record<string, string>>({});
   const atualizarDadosBO = (rotulo: string, texto: string) => {
     textosOcr.current[rotulo] = texto;
@@ -219,18 +218,6 @@ function OrdensPage() {
     }));
     return resultado;
   };
-  const anexarTexto = (rotulo: string, texto: string) => {
-    const limpo = formatarTextoFormal(texto);
-    if (!limpo) return;
-    setAdicionais((prev) => {
-      const bloco = `${rotulo}:\n${limpo}`;
-      const semAnterior = prev
-        .split(/\n\n(?=[^\n]+:\n)/)
-        .filter((b) => !b.startsWith(`${rotulo}:\n`))
-        .join("\n\n");
-      return semAnterior ? `${semAnterior}\n\n${bloco}` : bloco;
-    });
-  };
   const [extras, setExtras] = useState(extraVazio);
   const escolherExtra = async (i: number, f: File | undefined) => {
     if (!f) return;
@@ -241,7 +228,6 @@ function OrdensPage() {
     if (!f.type.startsWith("image/")) return;
     try {
       const texto = await lerImagem(f, () => {});
-      anexarTexto(`Documento adicional ${i + 1}`, texto);
       atualizarDadosBO(`Documento adicional ${i + 1}`, texto);
       const o = interpretarTexto(texto, nomesLojas);
       setForm((prev) => ({
@@ -250,7 +236,6 @@ function OrdensPage() {
         loja: prev.loja || o.loja,
         setor: prev.setor || o.setor,
         ocorrencia: prev.ocorrencia || o.ocorrencia,
-        descricao: prev.descricao || o.descricao,
       }));
       if (o.reservaNumero) setResNumero((v) => v || o.reservaNumero);
       toast.success(`Documento adicional ${i + 1} lido.`);
@@ -275,15 +260,14 @@ function OrdensPage() {
     setProgresso(0);
     try {
       const texto = await lerImagem(file, setProgresso);
-      anexarTexto("Print da ocorrência", texto);
       atualizarDadosBO("Print da ocorrência", texto);
       const r = interpretarTexto(texto, nomesLojas);
       setForm((prev) => ({
+        ...prev,
         data: r.data || prev.data,
         loja: prev.loja || r.loja,
         setor: r.setor || prev.setor,
         ocorrencia: r.ocorrencia || prev.ocorrencia,
-        descricao: r.descricao || prev.descricao,
         gravidade: r.ocorrencia ? r.gravidade : prev.gravidade,
       }));
       if (r.reservaNumero) setResNumero((v) => v || r.reservaNumero);
@@ -307,7 +291,6 @@ function OrdensPage() {
     setLendoRes(true);
     try {
       const texto = await lerImagem(file, () => {});
-      anexarTexto("Reserva de imagem (CFTV)", texto);
       atualizarDadosBO("Reserva de imagem (CFTV)", texto);
       const r = interpretarTexto(texto, nomesLojas);
       if (r.reservaNumero) {
@@ -335,7 +318,6 @@ function OrdensPage() {
     setLendoBo(true);
     try {
       const texto = await lerImagem(file, () => {});
-      anexarTexto("Boletim de Ocorrência", texto);
       const r = atualizarDadosBO("Boletim de Ocorrência", texto);
       const o = interpretarTexto(texto, nomesLojas);
       // complementa dados da OS que ainda estiverem vazios
@@ -345,7 +327,6 @@ function OrdensPage() {
         loja: prev.loja || o.loja,
         setor: prev.setor || o.setor,
         ocorrencia: prev.ocorrencia || o.ocorrencia,
-        descricao: prev.descricao || o.descricao,
         gravidade: prev.ocorrencia ? prev.gravidade : o.ocorrencia ? o.gravidade : prev.gravidade,
       }));
       if (r.numero) toast.success(`BO identificado: ${r.numero}`);
@@ -378,7 +359,6 @@ function OrdensPage() {
       descricao: formatarTextoFormal(form.descricao),
       gravidade: form.gravidade,
       printNome: printFile?.name,
-      dadosAdicionais: formatarTextoFormal(adicionais) || undefined,
       anexosNomes: arquivos.map((a) => a.file.name),
       reserva: temReserva
         ? {
@@ -424,7 +404,6 @@ function OrdensPage() {
     setBo({ numero: "", delegacia: "", data: "" });
     textosOcr.current = {};
     setForm({ data: "", loja: "", setor: "", ocorrencia: "", descricao: "", gravidade: "Média" });
-    setAdicionais("");
     setExtras(extraVazio());
   };
 
@@ -902,23 +881,12 @@ function OrdensPage() {
               </Field>
             </div>
             <div className="sm:col-span-2 lg:col-span-4">
-              <Field label="Descrição">
+              <Field label="Descrição da ocorrência">
                 <Textarea
                   value={form.descricao}
                   onChange={(e) => setForm({ ...form, descricao: e.target.value })}
                   rows={3}
-                  placeholder="Detalhes lidos do print…"
-                />
-              </Field>
-            </div>
-            <div className="sm:col-span-2 lg:col-span-4">
-              <Field label="Dados adicionais lidos dos prints (todo o conteúdo identificado)">
-                <Textarea
-                  value={adicionais}
-                  onChange={(e) => setAdicionais(e.target.value)}
-                  rows={6}
-                  className="font-mono text-xs"
-                  placeholder="Todo o texto lido em cada imagem aparece aqui, inclusive informações sem campo específico."
+                  placeholder="Preencha manualmente, se necessário."
                 />
               </Field>
             </div>
@@ -1263,28 +1231,13 @@ function OrdensPage() {
                       </Field>
                     </div>
                     <div className="sm:col-span-2">
-                      <Field label="Descrição">
+                      <Field label="Descrição da ocorrência">
                         <Textarea
                           value={editando.descricao}
                           onChange={(event) =>
                             setEditando({ ...editando, descricao: event.target.value })
                           }
                           rows={4}
-                        />
-                      </Field>
-                    </div>
-                    <div className="sm:col-span-2">
-                      <Field label="Dados adicionais lidos/inseridos">
-                        <Textarea
-                          value={editando.dadosAdicionais ?? ""}
-                          onChange={(event) =>
-                            setEditando({
-                              ...editando,
-                              dadosAdicionais: event.target.value || undefined,
-                            })
-                          }
-                          rows={5}
-                          className="font-mono text-xs"
                         />
                       </Field>
                     </div>

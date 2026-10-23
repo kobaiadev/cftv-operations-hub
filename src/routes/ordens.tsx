@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useRef, useState, type ChangeEvent } from "react";
 import {
   ClipboardList,
+  Download,
   FileText,
   ImageUp,
   Link2,
@@ -44,6 +45,7 @@ import { cn } from "@/lib/utils";
 import { useOS, nowBR, type OS, type OSStatus, type Severity } from "@/lib/os-store";
 import { useCadastro } from "@/lib/cadastro-store";
 import { interpretarBO, interpretarTexto, lerImagem } from "@/lib/ocr";
+import { baixarPdfOS } from "@/lib/os-pdf";
 import {
   arquivoParaDataUrl,
   lerAnexos,
@@ -134,6 +136,7 @@ function OrdensPage() {
   const [carregandoEdicao, setCarregandoEdicao] = useState(false);
   const [salvandoEdicao, setSalvandoEdicao] = useState(false);
   const [excluindoOS, setExcluindoOS] = useState<string | null>(null);
+  const [baixandoPdf, setBaixandoPdf] = useState<string | null>(null);
   const [rotuloNovoAnexo, setRotuloNovoAnexo] = useState("Documento adicional");
   const [filtroLoja, setFiltroLoja] = useState("todas");
   const [filtroData, setFiltroData] = useState("");
@@ -195,6 +198,27 @@ function OrdensPage() {
 
   // ---- Todo o texto lido + documentos adicionais ----
   const [adicionais, setAdicionais] = useState("");
+  const textosOcr = useRef<Record<string, string>>({});
+  const atualizarDadosBO = (rotulo: string, texto: string) => {
+    textosOcr.current[rotulo] = texto;
+    const resultado = interpretarBO(
+      textosOcr.current["Boletim de Ocorrência"] ?? "",
+      [
+        "Print da ocorrência",
+        "Reserva de imagem (CFTV)",
+        "Documento adicional 1",
+        "Documento adicional 2",
+        "Documento adicional 3",
+        "Documento adicional 4",
+      ].map((fonte) => textosOcr.current[fonte] ?? ""),
+    );
+    setBo((anterior) => ({
+      numero: resultado.numero || anterior.numero,
+      delegacia: resultado.delegacia || anterior.delegacia,
+      data: resultado.data || anterior.data,
+    }));
+    return resultado;
+  };
   const anexarTexto = (rotulo: string, texto: string) => {
     const limpo = formatarTextoFormal(texto);
     if (!limpo) return;
@@ -218,6 +242,7 @@ function OrdensPage() {
     try {
       const texto = await lerImagem(f, () => {});
       anexarTexto(`Documento adicional ${i + 1}`, texto);
+      atualizarDadosBO(`Documento adicional ${i + 1}`, texto);
       const o = interpretarTexto(texto, nomesLojas);
       setForm((prev) => ({
         ...prev,
@@ -251,10 +276,11 @@ function OrdensPage() {
     try {
       const texto = await lerImagem(file, setProgresso);
       anexarTexto("Print da ocorrência", texto);
+      atualizarDadosBO("Print da ocorrência", texto);
       const r = interpretarTexto(texto, nomesLojas);
       setForm((prev) => ({
-        data: r.data || prev.data || nowBR(),
-        loja: r.loja || prev.loja,
+        data: r.data || prev.data,
+        loja: prev.loja || r.loja,
         setor: r.setor || prev.setor,
         ocorrencia: r.ocorrencia || prev.ocorrencia,
         descricao: r.descricao || prev.descricao,
@@ -282,6 +308,7 @@ function OrdensPage() {
     try {
       const texto = await lerImagem(file, () => {});
       anexarTexto("Reserva de imagem (CFTV)", texto);
+      atualizarDadosBO("Reserva de imagem (CFTV)", texto);
       const r = interpretarTexto(texto, nomesLojas);
       if (r.reservaNumero) {
         setResNumero(r.reservaNumero);
@@ -309,13 +336,8 @@ function OrdensPage() {
     try {
       const texto = await lerImagem(file, () => {});
       anexarTexto("Boletim de Ocorrência", texto);
-      const r = interpretarBO(texto);
+      const r = atualizarDadosBO("Boletim de Ocorrência", texto);
       const o = interpretarTexto(texto, nomesLojas);
-      setBo((prev) => ({
-        numero: r.numero || prev.numero,
-        delegacia: r.delegacia || prev.delegacia,
-        data: r.data || prev.data,
-      }));
       // complementa dados da OS que ainda estiverem vazios
       setForm((prev) => ({
         ...prev,
@@ -400,6 +422,7 @@ function OrdensPage() {
     setBoFile(null);
     setBoUrl("");
     setBo({ numero: "", delegacia: "", data: "" });
+    textosOcr.current = {};
     setForm({ data: "", loja: "", setor: "", ocorrencia: "", descricao: "", gravidade: "Média" });
     setAdicionais("");
     setExtras(extraVazio());
@@ -418,6 +441,19 @@ function OrdensPage() {
       setEditando(null);
     } finally {
       setCarregandoEdicao(false);
+    }
+  };
+
+  const baixarPdf = async (os: OS) => {
+    setBaixandoPdf(os.id);
+    try {
+      await baixarPdfOS(os);
+      toast.success(`PDF da ocorrência ${os.id} gerado.`);
+    } catch (error) {
+      console.error(`Não foi possível gerar o PDF da ocorrência ${os.id}.`, error);
+      toast.error(`Não foi possível gerar o PDF da ocorrência ${os.id}.`);
+    } finally {
+      setBaixandoPdf(null);
     }
   };
 
@@ -563,7 +599,8 @@ function OrdensPage() {
           <ScanText className="size-4 text-primary" /> Nova OS a partir de print
         </h2>
         <p className="mb-4 text-xs text-muted-foreground">
-          Ao enviar cada imagem, o sistema lê e preenche os dados automaticamente.
+          Ao enviar cada imagem, o sistema lê e preenche os dados automaticamente. Os documentos
+          adicionais também complementam campos não identificados nos três uploads principais.
         </p>
 
         <div className="grid gap-6 lg:grid-cols-3">
@@ -888,7 +925,12 @@ function OrdensPage() {
           </div>
         </div>
 
-        <Button onClick={gerarOS} variant="secondary" className="mt-5 w-full">
+        <Button
+          onClick={gerarOS}
+          variant="secondary"
+          className="mt-5 w-full"
+          disabled={lendo || lendoRes || lendoBo || extras.some((extra) => extra.lendo)}
+        >
           <ClipboardList /> Gerar OS{resNumero.trim() ? " e vincular reserva" : ""}
         </Button>
         {osGerada && (
@@ -1065,6 +1107,17 @@ function OrdensPage() {
                   </span>
                 </TableCell>
                 <TableCell className="pr-5 text-right">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    disabled={baixandoPdf !== null}
+                    onClick={() => void baixarPdf(o)}
+                    aria-label={`Baixar PDF da ocorrência ${o.id}`}
+                    title={`Baixar PDF da ocorrência ${o.id}`}
+                  >
+                    {baixandoPdf === o.id ? <Loader2 className="animate-spin" /> : <Download />}
+                  </Button>
                   <Button
                     type="button"
                     variant="outline"

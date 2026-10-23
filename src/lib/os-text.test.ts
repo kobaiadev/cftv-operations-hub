@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { interpretarTexto } from "@/lib/ocr";
+import { interpretarBO, interpretarTexto } from "@/lib/ocr";
 import { formatarTextoFormal, limparTextoCapturado } from "@/lib/os-text";
 
 describe("formatação de textos de OS", () => {
@@ -31,6 +31,36 @@ describe("formatação de textos de OS", () => {
     expect(resultado.texto).not.toContain("Encaminhar");
   });
 
+  it("completa a loja por correspondência exata com o cadastro, ignorando diferenças de caixa e acento", () => {
+    const resultado = interpretarTexto("Unidade: NÁGUMO CENTRO", [
+      "Nagumo Central",
+      "Nagumo Centro",
+    ]);
+
+    expect(resultado.loja).toBe("Nagumo Centro");
+  });
+
+  it("corrige um erro simples do OCR no nome da loja quando a correspondência é segura", () => {
+    const resultado = interpretarTexto("Loja: Nagumo Centra", [
+      "Nagumo Centro",
+      "Nagumo Ponte Alta",
+    ]);
+
+    expect(resultado.loja).toBe("Nagumo Centro");
+  });
+
+  it("não escolhe uma loja se o texto do OCR combinar igualmente com mais de um cadastro", () => {
+    const resultado = interpretarTexto("Loja: Nagumo Centra", ["Nagumo Centro", "Nagumo Central"]);
+
+    expect(resultado.loja).toBe("");
+  });
+
+  it("não usa aproximação para localizar loja sem rótulo explícito", () => {
+    const resultado = interpretarTexto("Relato da ocorrência em Nagumo Centra", ["Nagumo Centro"]);
+
+    expect(resultado.loja).toBe("");
+  });
+
   it("remove marcações sem descartar rótulos com valores", () => {
     expect(limparTextoCapturado("*Loja:* Nagumo Centro")).toBe("Loja: Nagumo Centro");
   });
@@ -40,5 +70,71 @@ describe("formatação de textos de OS", () => {
       "Encaminhar as imagens do período solicitado.",
     );
     expect(limparTextoCapturado("Encaminhar...")).toBe("");
+  });
+
+  it("extrai o número de Chamado da solicitação de filmagem para vincular a reserva", () => {
+    const resultado = interpretarTexto("Solicitação Filmagem (Chamado: 123456)", []);
+
+    expect(resultado.reservaNumero).toBe("123456");
+  });
+
+  it("prioriza o número do Chamado em relação a outro número de reserva no print", () => {
+    const resultado = interpretarTexto(
+      "Reserva nº 98765\nSolicitação Filmagem (Chamado: 123456)",
+      [],
+    );
+
+    expect(resultado.reservaNumero).toBe("123456");
+  });
+
+  it("prioriza a data do registro do BO e completa dados com outras imagens", () => {
+    const resultado = interpretarBO(
+      [
+        "Boletim de Ocorrência nº 123456",
+        "Data da ocorrência: 18/10/2026",
+        "Data do registro: 20/10/2026",
+      ].join("\n"),
+      ["3º Distrito Policial"],
+    );
+
+    expect(resultado).toEqual({
+      numero: "123456",
+      delegacia: "3º Distrito Policial",
+      data: "20/10/2026",
+    });
+  });
+
+  it("busca os dados do BO nas demais imagens quando o print do BO não os contém", () => {
+    const resultado = interpretarBO("", [
+      "Número do BO: AB1234/2026\nDelegacia: 2º Distrito Policial\nData do registro: 21/10/2026",
+    ]);
+
+    expect(resultado).toEqual({
+      numero: "AB1234/2026",
+      delegacia: "2º Distrito Policial",
+      data: "21/10/2026",
+    });
+  });
+
+  it("não confunde a data da ocorrência de outra imagem com a data do registro do BO", () => {
+    const resultado = interpretarBO("", ["Número do BO: 123456\nData da ocorrência: 18/10/2026"]);
+
+    expect(resultado).toEqual({
+      numero: "123456",
+      delegacia: "",
+      data: "",
+    });
+  });
+
+  it("localiza a data do registro quando o OCR separa o rótulo e a data em linhas", () => {
+    const resultado = interpretarBO("Número do BO: 123456\nData do registro:\n22.10.2026 14:35");
+
+    expect(resultado.data).toBe("22/10/2026 14:35");
+  });
+
+  it("reconhece a data do registro em formato ISO", () => {
+    const resultado = interpretarBO("Registro do BO\n2026-10-22");
+
+    expect(resultado.data).toBe("22/10/2026");
   });
 });

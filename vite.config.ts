@@ -10,6 +10,7 @@ export default defineConfig({
   // Pre-bundle UI deps so adding a new component doesn't re-optimize mid-session
   // (which loads two React copies and blanks the preview).
   vite: {
+    envPrefix: ["VITE_", "NEXT_PUBLIC_SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"],
     optimizeDeps: {
       include: [
         "@radix-ui/react-select",

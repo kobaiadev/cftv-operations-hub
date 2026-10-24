@@ -45,6 +45,7 @@ import { cn } from "@/lib/utils";
 import { useOS, nowBR, type OS, type OSStatus, type Severity } from "@/lib/os-store";
 import { useCadastro } from "@/lib/cadastro-store";
 import { interpretarBO, interpretarTexto, lerImagem } from "@/lib/ocr";
+import { obterClienteSupabase } from "@/lib/supabase";
 import { baixarPdfOS } from "@/lib/os-pdf";
 import {
   arquivoParaDataUrl,
@@ -88,6 +89,14 @@ const normalizarBusca = (texto: string) =>
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLocaleLowerCase("pt-BR");
+
+function normalizarDataSupabase(data: string): string {
+  const brasileira = data.match(/^(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2}):(\d{2}))?$/);
+  if (!brasileira) return data;
+
+  const [, dia, mes, ano, hora, minuto] = brasileira;
+  return hora && minuto ? `${ano}-${mes}-${dia}T${hora}:${minuto}:00` : `${ano}-${mes}-${dia}`;
+}
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -195,6 +204,7 @@ function OrdensPage() {
   const [lendoBo, setLendoBo] = useState(false);
 
   const [osGerada, setOsGerada] = useState<string | null>(null);
+  const [salvandoOS, setSalvandoOS] = useState(false);
 
   // ---- Textos lidos usados para complementar os campos do BO ----
   const textosOcr = useRef<Record<string, string>>({});
@@ -339,6 +349,7 @@ function OrdensPage() {
   };
 
   const gerarOS = async () => {
+    if (salvandoOS) return;
     if (!form.ocorrencia.trim()) {
       toast.error("Informe o tipo de ocorrência antes de gerar a OS.");
       return;
@@ -351,60 +362,89 @@ function OrdensPage() {
     extras.forEach(
       (x, i) => x.file && arquivos.push({ rotulo: `Documento adicional ${i + 1}`, file: x.file }),
     );
-    const nova = addOS({
-      data: form.data || nowBR(),
-      loja: limparTextoCapturado(form.loja || "Não identificada"),
-      setor: limparTextoCapturado(form.setor || "—"),
-      ocorrencia: formatarTextoFormal(form.ocorrencia),
-      descricao: formatarTextoFormal(form.descricao),
-      gravidade: form.gravidade,
-      printNome: printFile?.name,
-      anexosNomes: arquivos.map((a) => a.file.name),
-      reserva: temReserva
-        ? {
-            numero: limparTextoCapturado(resNumero.trim()),
-            imagemNome: limparTextoCapturado(resFile?.name ?? "—"),
-            vinculadaEm: nowBR(),
-          }
-        : undefined,
-      bo: bo.numero.trim()
-        ? {
-            numero: limparTextoCapturado(bo.numero.trim()),
-            delegacia: limparTextoCapturado(bo.delegacia.trim()),
-            data: limparTextoCapturado(bo.data.trim()),
-            imagemNome: limparTextoCapturado(boFile?.name ?? "—"),
-          }
-        : undefined,
-    });
+    const data = form.data || nowBR();
+    const loja = limparTextoCapturado(form.loja || "Não identificada");
+    const ocorrencia = formatarTextoFormal(form.ocorrencia);
+    const descricao = formatarTextoFormal(form.descricao);
+
+    setSalvandoOS(true);
     try {
-      const anexos = await Promise.all(
-        arquivos.map(async (a) => ({
-          rotulo: a.rotulo,
-          nome: a.file.name,
-          tipo: a.file.type,
-          dataUrl: await arquivoParaDataUrl(a.file),
-        })),
+      const { error } = await obterClienteSupabase()
+        .from("work_orders")
+        .insert({
+          store_name: loja,
+          event_date: normalizarDataSupabase(data),
+          occurrence_type: ocorrencia,
+          description: descricao,
+        });
+      if (error) throw error;
+
+      const nova = addOS({
+        data,
+        loja,
+        setor: limparTextoCapturado(form.setor || "—"),
+        ocorrencia,
+        descricao,
+        gravidade: form.gravidade,
+        printNome: printFile?.name,
+        anexosNomes: arquivos.map((a) => a.file.name),
+        reserva: temReserva
+          ? {
+              numero: limparTextoCapturado(resNumero.trim()),
+              imagemNome: limparTextoCapturado(resFile?.name ?? "—"),
+              vinculadaEm: nowBR(),
+            }
+          : undefined,
+        bo: bo.numero.trim()
+          ? {
+              numero: limparTextoCapturado(bo.numero.trim()),
+              delegacia: limparTextoCapturado(bo.delegacia.trim()),
+              data: limparTextoCapturado(bo.data.trim()),
+              imagemNome: limparTextoCapturado(boFile?.name ?? "—"),
+            }
+          : undefined,
+      });
+      try {
+        const anexos = await Promise.all(
+          arquivos.map(async (a) => ({
+            rotulo: a.rotulo,
+            nome: a.file.name,
+            tipo: a.file.type,
+            dataUrl: await arquivoParaDataUrl(a.file),
+          })),
+        );
+        await salvarAnexos(nova.id, anexos);
+      } catch (error) {
+        console.error(
+          `A OS ${nova.id} foi salva, mas os anexos não foram armazenados localmente.`,
+          error,
+        );
+        toast.error(
+          "A OS foi salva no Supabase, mas não foi possível guardar as imagens localmente.",
+        );
+      }
+      setOsGerada(nova.id);
+      toast.success(
+        `${nova.id} salva no Supabase${temReserva ? ` · reserva ${resNumero.trim()}` : ""}${bo.numero.trim() ? ` · BO ${bo.numero.trim()}` : ""}.`,
       );
-      await salvarAnexos(nova.id, anexos);
-    } catch {
-      toast.error("A OS foi criada, mas não foi possível guardar as imagens.");
+      setPrintFile(null);
+      setPrintUrl("");
+      setResFile(null);
+      setResUrl("");
+      setResNumero("");
+      setBoFile(null);
+      setBoUrl("");
+      setBo({ numero: "", delegacia: "", data: "" });
+      textosOcr.current = {};
+      setForm({ data: "", loja: "", setor: "", ocorrencia: "", descricao: "", gravidade: "Média" });
+      setExtras(extraVazio());
+    } catch (error) {
+      console.error("Não foi possível salvar a OS na tabela work_orders.", error);
+      const mensagem = error instanceof Error ? error.message : "Erro desconhecido.";
+      toast.error(`Não foi possível salvar a OS no Supabase: ${mensagem}`);
+    } finally {
+      setSalvandoOS(false);
     }
-    setOsGerada(nova.id);
-    toast.success(
-      `${nova.id} gerada${temReserva ? ` · reserva ${resNumero.trim()}` : ""}${bo.numero.trim() ? ` · BO ${bo.numero.trim()}` : ""}.`,
-    );
-    // limpa o formulário para a próxima OS
-    setPrintFile(null);
-    setPrintUrl("");
-    setResFile(null);
-    setResUrl("");
-    setResNumero("");
-    setBoFile(null);
-    setBoUrl("");
-    setBo({ numero: "", delegacia: "", data: "" });
-    textosOcr.current = {};
-    setForm({ data: "", loja: "", setor: "", ocorrencia: "", descricao: "", gravidade: "Média" });
-    setExtras(extraVazio());
   };
 
   const abrirEdicao = async (os: OS) => {
@@ -897,9 +937,14 @@ function OrdensPage() {
           onClick={gerarOS}
           variant="secondary"
           className="mt-5 w-full"
-          disabled={lendo || lendoRes || lendoBo || extras.some((extra) => extra.lendo)}
+          disabled={
+            salvandoOS || lendo || lendoRes || lendoBo || extras.some((extra) => extra.lendo)
+          }
         >
-          <ClipboardList /> Gerar OS{resNumero.trim() ? " e vincular reserva" : ""}
+          {salvandoOS ? <Loader2 className="animate-spin" /> : <ClipboardList />}
+          {salvandoOS
+            ? "Salvando no Supabase..."
+            : `Gerar OS${resNumero.trim() ? " e vincular reserva" : ""}`}
         </Button>
         {osGerada && (
           <p className="mt-3 rounded-md border border-success/30 bg-success/10 px-3 py-2 text-sm text-success">

@@ -283,25 +283,21 @@ function removerMetadados(texto: string) {
     .join("\n");
 }
 
-function consolidarRelato(textos: string[]) {
-  const vistos = new Set<string>();
-  const paragrafos: string[] = [];
-  for (const texto of textos) {
-    const textoNormalizado = normalizarTextoRelatorio(texto);
-    for (const bloco of textoNormalizado.split(/\n\s*\n/)) {
-      const linhas = limparTextoCapturado(bloco).split(/\r?\n/);
-      const linhasUnicas: string[] = [];
-      for (const linha of linhas) {
-        const conteudo = linha.replace(/^\s*[•-]\s*/, "").trim();
-        const chave = normalizarChave(conteudo);
-        if (!chave || vistos.has(chave)) continue;
-        vistos.add(chave);
-        linhasUnicas.push(conteudo);
-      }
-      if (linhasUnicas.length) paragrafos.push(linhasUnicas.join("\n"));
-    }
+function tituloFormalAnexo(rotulo: string) {
+  const chave = normalizarChave(rotulo);
+  if (chave.includes("requisicao") || chave.includes("policial")) {
+    return "Anexo: Documento Policial";
   }
-  return paragrafos.join("\n\n");
+  if (chave.includes("boletim") || chave === "bo") {
+    return "Anexo: Boletim de Ocorrência";
+  }
+  if (chave.includes("reserva") || chave.includes("cftv")) {
+    return "Anexo: Reserva de Imagens (CFTV)";
+  }
+  if (chave.includes("print") || chave.includes("ocorrencia")) {
+    return "Anexo: Captura de Tela da Ocorrência";
+  }
+  return "Anexo: Documento Complementar";
 }
 
 async function carregar(src: string) {
@@ -320,7 +316,6 @@ export async function baixarPdfOS(os: OS) {
   const CW = W - M * 2;
   let y = 0;
   const textoOcr = limparTextoCapturado(normalizarTextoRelatorio(os.dadosAdicionais ?? ""));
-  const relatoOcr = lerSecao(textoOcr, ["relato consolidado dos fatos", "relato dos fatos"]);
   const providenciasOcr = removerMetadados(lerSecao(textoOcr, ["providencias adotadas"]));
   const solicitacaoOcr = lerSecao(textoOcr, [
     "solicitacao e requisicao oficial de imagens",
@@ -328,11 +323,7 @@ export async function baixarPdfOS(os: OS) {
   ]);
   const requisicaoPolicialOcr =
     lerSecao(textoOcr, ["requisicao de imagens policial", "requisicao policial"]) || textoOcr;
-  const relatoConsolidado = consolidarRelato([
-    os.descricao,
-    relatoOcr,
-    relatoOcr ? "" : removerMetadados(textoOcr),
-  ]);
+  const relatoConsolidado = os.descricao.trim();
 
   const rodape = () => {
     const n = doc.getNumberOfPages();
@@ -433,6 +424,50 @@ export async function baixarPdfOS(os: OS) {
       doc.setFontSize(9.5);
       doc.setTextColor(25, 25, 35);
       doc.text(textoLinhas, M + 4, y + 8.5);
+      y += altura + 2;
+    }
+    y += 3;
+  };
+
+  const linhasGrade = (pares: [string, string][], colunas: number) => {
+    const espacamento = 3;
+    const larguraCelula = (CW - espacamento * (colunas - 1)) / colunas;
+    for (let inicio = 0; inicio < pares.length; inicio += colunas) {
+      const linha = pares.slice(inicio, inicio + colunas);
+      const celulas = linha.map(([rotulo, valorBruto]) => {
+        const valor = limparTextoCapturado(valorBruto).trim() || "Não informado";
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(7.5);
+        const rotuloLinhas = doc.splitTextToSize(rotulo, larguraCelula - 8) as string[];
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(9.5);
+        const valorLinhas = doc.splitTextToSize(valor, larguraCelula - 8) as string[];
+        return {
+          rotuloLinhas,
+          valorLinhas,
+          alturaRotulo: Math.max(1, rotuloLinhas.length) * 3.5,
+          alturaValor: Math.max(1, valorLinhas.length) * 4.2,
+        };
+      });
+      const alturaRotulo = Math.max(...celulas.map((celula) => celula.alturaRotulo));
+      const alturaValor = Math.max(...celulas.map((celula) => celula.alturaValor));
+      const altura = 4 + alturaRotulo + 2 + alturaValor + 4;
+      garantir(altura + 2);
+      for (const [indice, celula] of celulas.entries()) {
+        const x = M + indice * (larguraCelula + espacamento);
+        doc.setFillColor(...LIGHT);
+        doc.setDrawColor(225, 230, 237);
+        doc.setLineWidth(0.2);
+        doc.roundedRect(x, y, larguraCelula, altura, 1.2, 1.2, "FD");
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(7.5);
+        doc.setTextColor(...GRAY);
+        doc.text(celula.rotuloLinhas, x + 4, y + 4);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(9.5);
+        doc.setTextColor(25, 25, 35);
+        doc.text(celula.valorLinhas, x + 4, y + 4 + alturaRotulo + 2);
+      }
       y += altura + 2;
     }
     y += 3;
@@ -543,18 +578,24 @@ export async function baixarPdfOS(os: OS) {
   ];
   const horarioOcr = lerCampo(textoOcr, ["Horário"]);
   if (horarioOcr) dadosGerais.splice(4, 0, ["HORÁRIO", horarioOcr]);
-  linhas(dadosGerais);
+  linhasGrade(dadosGerais, 3);
 
   secao("2. Envolvidos e equipe");
-  linhas([
+  linhasGrade(
     [
-      "Gerente responsável",
-      lerEnvolvidoNaDescricao(os.descricao, ["Gerente responsável", "Gerente"]) ||
-        lerCampo(textoOcr, ["Gerente responsável", "Gerente"]),
+      [
+        "Gerente responsável",
+        lerEnvolvidoNaDescricao(os.descricao, ["Gerente responsável", "Gerente"]) ||
+          lerCampo(textoOcr, ["Gerente responsável", "Gerente"]),
+      ],
+      [
+        "Fiscal",
+        lerEnvolvidoNaDescricao(os.descricao, ["Fiscal"]) || lerCampo(textoOcr, ["Fiscal"]),
+      ],
+      ["Vigilante", lerCampo(textoOcr, ["Vigilante"])],
     ],
-    ["Fiscal", lerEnvolvidoNaDescricao(os.descricao, ["Fiscal"]) || lerCampo(textoOcr, ["Fiscal"])],
-    ["Vigilante", lerCampo(textoOcr, ["Vigilante"])],
-  ]);
+    3,
+  );
 
   secao("3. Relato consolidado dos fatos");
   paragrafo(relatoConsolidado || "Relato não informado.", false, 3);
@@ -619,82 +660,25 @@ export async function baixarPdfOS(os: OS) {
   ]);
   if (solicitacaoOcr) paragrafo(removerMetadados(solicitacaoOcr));
 
+  const anexos = await lerAnexos(os.id);
+  const titulosAnexos = [
+    ...anexos.map((anexo) => tituloFormalAnexo(anexo.rotulo)),
+    ...(os.printNome ? ["Anexo: Captura de Tela da Ocorrência"] : []),
+    ...(os.reserva?.imagemNome ? ["Anexo: Reserva de Imagens (CFTV)"] : []),
+    ...(os.bo?.imagemNome ? ["Anexo: Boletim de Ocorrência"] : []),
+    ...((os.anexosNomes?.length ?? 0) > 0 ? ["Anexo: Documento Complementar"] : []),
+  ];
+
   secao("6. Registros internos e anexos");
   linhas([
-    [
-      "Documentos vinculados",
-      [
-        ...new Set([
-          ...(os.anexosNomes ?? []),
-          os.printNome,
-          os.reserva?.imagemNome,
-          os.bo?.imagemNome,
-        ]),
-      ]
-        .filter((nome): nome is string => Boolean(nome?.trim()))
-        .join(", "),
-    ],
+    ["Documentos vinculados", [...new Set(titulosAnexos)].join(", ")],
     ["Responsável pelo registro", "Daniel da Silva Lima — Analista Supervisor de Segurança"],
   ]);
   if (os.reserva) {
     linhas([
       ["Número da reserva de CFTV", os.reserva.numero],
-      ["Arquivo da reserva", os.reserva.imagemNome],
       ["Data do vínculo", os.reserva.vinculadaEm],
     ]);
-  }
-
-  // Prints e anexos
-  const anexos = await lerAnexos(os.id);
-  if (anexos.length) {
-    secao("Prints e documentos vinculados");
-    for (const a of anexos) {
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(9.5);
-      if (a.tipo.startsWith("image/")) {
-        try {
-          const img = await carregar(a.dataUrl);
-          let w = CW;
-          let h = (img.naturalHeight / img.naturalWidth) * w;
-          if (h > 200) {
-            h = 200;
-            w = (img.naturalWidth / img.naturalHeight) * h;
-          }
-          garantir(h + 10);
-          doc.setTextColor(...NAVY);
-          doc.text(`${limparTextoCapturado(a.rotulo)}: ${limparTextoCapturado(a.nome)}`, M, y);
-          y += 3;
-          const fmt = a.tipo.includes("png") ? "PNG" : "JPEG";
-          doc.addImage(a.dataUrl, fmt, M + (CW - w) / 2, y, w, h);
-          doc.setDrawColor(210, 214, 222);
-          doc.rect(M + (CW - w) / 2, y, w, h);
-          y += h + 8;
-          continue;
-        } catch (error) {
-          console.error(`Não foi possível incorporar a imagem ${a.nome} ao PDF.`, error);
-          garantir(14);
-          doc.setTextColor(...NAVY);
-          doc.text(`${limparTextoCapturado(a.rotulo)}: ${limparTextoCapturado(a.nome)}`, M, y);
-          doc.setFont("helvetica", "normal");
-          doc.setFontSize(8.5);
-          doc.setTextColor(...GRAY);
-          doc.text(
-            "Não foi possível exibir a imagem no PDF; o anexo original permanece no sistema.",
-            M,
-            y + 4.5,
-          );
-          y += 12;
-          continue;
-        }
-      }
-      garantir(8);
-      doc.setTextColor(...NAVY);
-      doc.text(`${limparTextoCapturado(a.rotulo)}: ${limparTextoCapturado(a.nome)}`, M, y);
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(...GRAY);
-      doc.text("(Arquivo anexado ao sistema; formato não exibido no PDF.)", M, y + 4.5);
-      y += 10;
-    }
   }
 
   // Assinaturas
@@ -714,6 +698,59 @@ export async function baixarPdfOS(os: OS) {
   doc.setTextColor(...GRAY);
   doc.text("Analista Supervisor de Segurança", M + 39, y + 12, { align: "center" });
   doc.text("Diretoria / Gerência responsável", W - M - 39, y + 12, { align: "center" });
+  y += 20;
+
+  // Prints e anexos
+  if (anexos.length) {
+    secao("Prints e documentos vinculados");
+    for (const a of anexos) {
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9.5);
+      if (a.tipo.startsWith("image/")) {
+        try {
+          const img = await carregar(a.dataUrl);
+          let w = CW;
+          let h = (img.naturalHeight / img.naturalWidth) * w;
+          if (h > 200) {
+            h = 200;
+            w = (img.naturalWidth / img.naturalHeight) * h;
+          }
+          garantir(h + 10);
+          doc.setTextColor(...NAVY);
+          doc.text(tituloFormalAnexo(a.rotulo), M, y);
+          y += 3;
+          const fmt = a.tipo.includes("png") ? "PNG" : "JPEG";
+          doc.addImage(a.dataUrl, fmt, M + (CW - w) / 2, y, w, h);
+          doc.setDrawColor(210, 214, 222);
+          doc.rect(M + (CW - w) / 2, y, w, h);
+          y += h + 8;
+          continue;
+        } catch (error) {
+          console.error(`Não foi possível incorporar a imagem ${a.nome} ao PDF.`, error);
+          garantir(14);
+          doc.setTextColor(...NAVY);
+          doc.text(tituloFormalAnexo(a.rotulo), M, y);
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(8.5);
+          doc.setTextColor(...GRAY);
+          doc.text(
+            "Não foi possível exibir a imagem no PDF; o anexo original permanece no sistema.",
+            M,
+            y + 4.5,
+          );
+          y += 12;
+          continue;
+        }
+      }
+      garantir(8);
+      doc.setTextColor(...NAVY);
+      doc.text(tituloFormalAnexo(a.rotulo), M, y);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(...GRAY);
+      doc.text("(Arquivo anexado ao sistema; formato não exibido no PDF.)", M, y + 4.5);
+      y += 10;
+    }
+  }
 
   rodape();
   doc.save(`${os.id}.pdf`);

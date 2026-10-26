@@ -4,6 +4,8 @@ const pdf = vi.hoisted(() => ({
   textos: [] as string[],
   opcoesTexto: [] as ({ align?: string; charSpace?: number } | undefined)[],
   posicoesY: [] as number[],
+  posicoesX: [] as number[],
+  anexos: [] as { rotulo: string; nome: string; tipo: string; dataUrl: string }[],
 }));
 
 vi.mock("jspdf", () => {
@@ -45,12 +47,13 @@ vi.mock("jspdf", () => {
     }
     text(
       texto: string | string[],
-      _x: number,
+      x: number,
       y: number,
       opcoes?: { align?: string; charSpace?: number },
     ) {
       pdf.textos.push(...(Array.isArray(texto) ? texto : [texto]));
       pdf.opcoesTexto.push(opcoes);
+      pdf.posicoesX.push(x);
       pdf.posicoesY.push(y);
     }
   }
@@ -59,7 +62,7 @@ vi.mock("jspdf", () => {
 });
 
 vi.mock("@/lib/os-files", () => ({
-  lerAnexos: vi.fn().mockResolvedValue([]),
+  lerAnexos: vi.fn(async () => pdf.anexos),
 }));
 
 import { baixarPdfOS, normalizarTextoRelatorio } from "@/lib/os-pdf";
@@ -70,6 +73,8 @@ describe("layout do relatório de OS em PDF", () => {
     pdf.textos.length = 0;
     pdf.opcoesTexto.length = 0;
     pdf.posicoesY.length = 0;
+    pdf.posicoesX.length = 0;
+    pdf.anexos.length = 0;
     vi.stubGlobal(
       "Image",
       class {
@@ -117,7 +122,7 @@ describe("layout do relatório de OS em PDF", () => {
     expect(pdf.textos).toContain("Donizete Campos");
     expect(pdf.textos).toContain("Analista Supervisor de Segurança");
     expect(pdf.textos).toContain("Diretoria / Gerência responsável");
-    expect(pdf.textos.some((texto) => texto.startsWith("Loja:"))).toBe(true);
+    expect(pdf.textos).toContain("Loja");
   });
 
   it("consolida dados identificados sem repetir fatos ou inventar exigências policiais", async () => {
@@ -152,9 +157,9 @@ describe("layout do relatório de OS em PDF", () => {
     await baixarPdfOS(os);
     const texto = pdf.textos.join("\n");
 
-    expect(texto).toContain("Gerente responsável:");
+    expect(texto).toContain("Gerente responsável");
     expect(texto).toContain("Ana Silva");
-    expect(texto).toContain("Fiscal:");
+    expect(texto).toContain("Fiscal");
     expect(texto).toContain("Bruno Santos");
     expect(texto).toContain("Órgão solicitante:");
     expect(texto).toContain("93ª Delegacia de Polícia");
@@ -187,12 +192,12 @@ describe("layout do relatório de OS em PDF", () => {
     const fimEnvolvidos = pdf.textos.indexOf("3. RELATO CONSOLIDADO DOS FATOS");
     const envolvidos = pdf.textos.slice(inicioEnvolvidos, fimEnvolvidos).join("\n");
 
-    expect(envolvidos).toContain("Gerente responsável:");
+    expect(envolvidos).toContain("Gerente responsável");
     expect(envolvidos).toContain("Ana Silva");
     expect(envolvidos).not.toContain("Não informado");
-    expect(envolvidos).toContain("Fiscal:");
+    expect(envolvidos).toContain("Fiscal");
     expect(envolvidos).toContain("Bruno Santos");
-    expect(envolvidos).toContain("Vigilante:");
+    expect(envolvidos).toContain("Vigilante");
     expect(envolvidos).toContain("Carlos Souza");
     expect(pdf.textos.join("\n")).not.toContain("Chamados / Protocolos:");
     expect(pdf.textos.join("\n")).not.toContain("CH-12345");
@@ -223,6 +228,71 @@ describe("layout do relatório de OS em PDF", () => {
     expect(pdf.posicoesY[segundoParagrafo]! - pdf.posicoesY[primeiroParagrafo]!).toBeGreaterThan(5);
   });
 
+  it("exibe somente a descrição no relato e organiza os dados gerais em colunas", async () => {
+    const os: OS = {
+      id: "OS-2489",
+      data: "26/10/2026 13:00",
+      loja: "Loja Centro",
+      setor: "Açougue",
+      ocorrencia: "Furto",
+      descricao: "Relato escrito pelo usuário.\nSegunda linha do relato.",
+      gravidade: "Alta",
+      status: "Aguardando Imagens",
+      dadosAdicionais: [
+        "Relato consolidado dos fatos",
+        "Texto bruto extraído de imagem que não deve aparecer no relato.",
+        "Requisição de Imagens (POLICIAL):",
+        "De: Delegacia de Polícia Civil",
+      ].join("\n"),
+    };
+
+    await baixarPdfOS(os);
+
+    const inicioRelato = pdf.textos.indexOf("3. RELATO CONSOLIDADO DOS FATOS");
+    const fimRelato = pdf.textos.indexOf("4. PROVIDÊNCIAS ADOTADAS");
+    const relatoPdf = pdf.textos.slice(inicioRelato, fimRelato).join("\n");
+    const xLoja = pdf.posicoesX[pdf.textos.indexOf("Loja")]!;
+    const xSetor = pdf.posicoesX[pdf.textos.indexOf("Setor")]!;
+
+    expect(relatoPdf).toContain("Relato escrito pelo usuário.");
+    expect(relatoPdf).toContain("Segunda linha do relato.");
+    expect(relatoPdf).not.toContain("Texto bruto extraído de imagem");
+    expect(relatoPdf).not.toContain("Delegacia de Polícia Civil");
+    expect(pdf.posicoesY[pdf.textos.indexOf("Loja")]).toBe(
+      pdf.posicoesY[pdf.textos.indexOf("Setor")],
+    );
+    expect(xLoja).toBeLessThan(xSetor);
+  });
+
+  it("usa títulos formais nos anexos e posiciona assinaturas antes das imagens", async () => {
+    const os: OS = {
+      id: "OS-2490",
+      data: "26/10/2026 13:30",
+      loja: "Loja Centro",
+      setor: "Açougue",
+      ocorrencia: "Furto",
+      descricao: "Relato para o anexo.",
+      gravidade: "Alta",
+      status: "Aguardando Imagens",
+    };
+    pdf.anexos.push({
+      rotulo: "Print da ocorrência",
+      nome: "1.jpg",
+      tipo: "image/jpeg",
+      dataUrl: "data:image/jpeg;base64,abc",
+    });
+
+    await baixarPdfOS(os);
+
+    const texto = pdf.textos.join("\n");
+    const ultimaOcorrenciaDoTitulo = pdf.textos.lastIndexOf("Anexo: Captura de Tela da Ocorrência");
+
+    expect(texto).toContain("Anexo: Captura de Tela da Ocorrência");
+    expect(texto).not.toContain("1.jpg");
+    expect(pdf.textos.indexOf("Daniel da Silva Lima")).toBeLessThan(ultimaOcorrenciaDoTitulo);
+    expect(pdf.textos.indexOf("Donizete Campos")).toBeLessThan(ultimaOcorrenciaDoTitulo);
+  });
+
   it("preenche a requisição com os dados identificados no OCR do registro policial", async () => {
     const os: OS = {
       id: "OS-2485",
@@ -251,7 +321,7 @@ describe("layout do relatório de OS em PDF", () => {
     expect(texto).toContain("2º Distrito Policial");
     expect(texto).toContain("Delegada Ana Souza");
     expect(texto).toContain("nº 123/2026");
-    expect(texto).toContain("Inquérito: 456/2026");
+    expect(texto).toContain("456/2026");
     expect(texto).toContain("10 dias, por meio digital");
     expect(texto).toContain("Encaminhar as imagens do período informado.");
   });
@@ -316,7 +386,7 @@ describe("layout do relatório de OS em PDF", () => {
 
     expect(texto).toContain("HORÁRIO:");
     expect(texto).toContain("18:30");
-    expect(texto).toContain("Fiscal:");
+    expect(texto).toContain("Fiscal");
     expect(texto).toContain("Vigilante:");
     expect(texto).toContain("RELATO:");
     expect(pdf.textos.filter((linha) => linha === "•")).toHaveLength(3);

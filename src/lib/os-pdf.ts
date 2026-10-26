@@ -49,6 +49,110 @@ function lerCampo(texto: string, rotulos: string[]) {
   return "";
 }
 
+function buscarValorRotulado(texto: string, rotulos: RegExp) {
+  const linhas = texto.split(/\r?\n/).map((linha) => linha.trim());
+  for (let indice = 0; indice < linhas.length; indice++) {
+    const linha = linhas[indice] ?? "";
+    const correspondencia = linha.match(rotulos);
+    if (!correspondencia) continue;
+
+    const valorNaLinha = correspondencia[1]?.trim();
+    if (valorNaLinha) return valorNaLinha;
+
+    const proximaLinha = linhas[indice + 1]?.trim();
+    if (proximaLinha && !/^[\p{L}][\p{L}\s/]{0,40}:$/u.test(proximaLinha)) {
+      return proximaLinha;
+    }
+  }
+  return "";
+}
+
+function extrairOrgaoSolicitante(texto: string) {
+  return (
+    buscarValorRotulado(texto, /^\s*(?:de|órgão solicitante|origem)\s*[:-]\s*(.*)$/i) ||
+    texto
+      .split(/\r?\n/)
+      .map((linha) => linha.trim())
+      .find((linha) => /delegacia.{0,50}pol[ií]cia|pol[ií]cia civil/i.test(linha)) ||
+    ""
+  );
+}
+
+function extrairAutoridadePolicial(texto: string) {
+  const linhas = texto.split(/\r?\n/).map((linha) => linha.trim());
+  for (let indice = linhas.length - 1; indice >= 0; indice--) {
+    const assinatura = linhas[indice] ?? "";
+    if (!/(?:oficial|agente|inspetor).{0,35}pol[ií]cia civil/i.test(assinatura)) continue;
+
+    const nome = linhas
+      .slice(Math.max(0, indice - 2), indice)
+      .reverse()
+      .find((linha) => /[\p{Lu}][\p{L}]+(?:\s+[\p{Lu}][\p{L}]+){1,5}/u.test(linha));
+    const matricula = linhas[indice + 1]?.match(/\b\d(?:[\d.-]*\d)?\b/)?.[0] ?? "";
+    return [nome, assinatura, matricula && !assinatura.includes(matricula) ? matricula : ""]
+      .filter(Boolean)
+      .join(" - ");
+  }
+  return lerCampo(texto, [
+    "Autoridade policial / matrícula",
+    "Autoridade policial",
+    "Delegado",
+    "Delegada",
+    "Escrivão",
+    "Matrícula",
+  ]);
+}
+
+function extrairNumeroOficioData(texto: string) {
+  const textoPlano = texto.replace(/\s+/g, " ");
+  const linhaOficio = textoPlano.match(
+    /\b(?:OF\.?|OF[IÍ]CIO)\s*(?:N[ºO°.]?\s*)?([A-Z0-9][A-Z0-9./-]{3,})/i,
+  );
+  const data = textoPlano.match(
+    /\b\d{1,2}\s+de\s+(?:janeiro|fevereiro|março|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro)\s+de\s+\d{4}\b/i,
+  )?.[0];
+  if (linhaOficio) {
+    return `OF. ${linhaOficio[1]}${data ? ` / ${data}` : ""}`;
+  }
+  return lerCampo(texto, ["Número do ofício / data", "Número do ofício", "Ofício"]);
+}
+
+function extrairPrazoCondicoes(texto: string) {
+  const rotulado = lerCampo(texto, [
+    "Prazo e condições de entrega",
+    "Prazo",
+    "Condições de entrega",
+  ]);
+  if (rotulado) return rotulado;
+
+  const textoPlano = texto.replace(/\s+/g, " ");
+  return (
+    textoPlano.match(/\bprazo\b[^.!?]{0,500}?\b\d+\s*(?:dias?|horas?)(?:[^.!?]{0,350})/i)?.[0] ?? ""
+  );
+}
+
+function extrairDeterminacao(texto: string) {
+  const rotulada =
+    lerCampo(texto, ["Determinação", "Exigências da autoridade"]) ||
+    lerSecao(texto, ["determinacao"]);
+  if (rotulada) return rotulada;
+
+  const textoPlano = texto.replace(/\s+/g, " ");
+  const frases = textoPlano.split(/(?<=[.!?])\s+/);
+  const motivo = frases.find(
+    (frase) =>
+      /imagens?|gravações?|filmagens?/i.test(frase) &&
+      /solicit|requis|monitor|flagr|motiv|ocorr|subtra|abord|investig/i.test(frase),
+  );
+  if (motivo) return motivo;
+
+  return (
+    textoPlano.match(
+      /\b(?:solicito|requisito|encaminh(?:ar|amento)|fornecimento)\b[^.!?]{0,500}\b(?:imagens?|gravações?|filmagens?)\b[^.!?]{0,500}/i,
+    )?.[0] ?? ""
+  );
+}
+
 function lerSecao(texto: string, titulos: string[]) {
   const titulosNormalizados = titulos.map(normalizarChave);
   const linhas = limparTextoCapturado(normalizarTextoRelatorio(texto)).split(/\r?\n/);
@@ -208,6 +312,8 @@ export async function baixarPdfOS(os: OS) {
     "solicitacao e requisicao oficial de imagens",
     "solicitacao oficial de imagens",
   ]);
+  const requisicaoPolicialOcr =
+    lerSecao(textoOcr, ["requisicao de imagens policial", "requisicao policial"]) || textoOcr;
   const relatoConsolidado = consolidarRelato([
     os.descricao,
     relatoOcr,
@@ -446,38 +552,33 @@ export async function baixarPdfOS(os: OS) {
   }
 
   secao("5. Solicitação e requisição oficial de imagens");
-  const orgaoSolicitante = lerCampo(textoOcr, [
-    "Órgão solicitante",
-    "Órgão",
-    "Delegacia",
-    "Distrito Policial",
-    "Unidade policial",
-  ]);
-  const procedimentoReferencia = lerCampo(textoOcr, [
-    "Procedimento / referência",
-    "Procedimento",
-    "Referência",
-    "Inquérito policial",
-    "Inquérito",
-    "Registro de ocorrência",
-  ]);
+  const orgaoSolicitante =
+    extrairOrgaoSolicitante(requisicaoPolicialOcr) ||
+    lerCampo(textoOcr, [
+      "Órgão solicitante",
+      "Órgão",
+      "Delegacia",
+      "Distrito Policial",
+      "Unidade policial",
+    ]);
+  const procedimentoReferencia =
+    lerCampo(textoOcr, [
+      "Procedimento / referência",
+      "Procedimento",
+      "Referência",
+      "Inquérito policial",
+      "Inquérito",
+      "Registro de ocorrência",
+    ]) ||
+    requisicaoPolicialOcr.match(/\b\d{3}[-/]\d{4,}\/\d{4}\b/)?.[0] ||
+    "";
   linhas([
     ["Órgão solicitante", orgaoSolicitante || os.bo?.delegacia || ""],
     [
       "Autoridade policial / matrícula",
-      lerCampo(textoOcr, [
-        "Autoridade policial / matrícula",
-        "Autoridade policial",
-        "Delegado",
-        "Delegada",
-        "Escrivão",
-        "Matrícula",
-      ]),
+      extrairAutoridadePolicial(requisicaoPolicialOcr) || extrairAutoridadePolicial(textoOcr),
     ],
-    [
-      "Número do ofício / data",
-      lerCampo(textoOcr, ["Número do ofício / data", "Número do ofício", "Ofício"]),
-    ],
+    ["Número do ofício / data", extrairNumeroOficioData(requisicaoPolicialOcr)],
     [
       "Procedimento / referência",
       procedimentoReferencia ||
@@ -487,11 +588,12 @@ export async function baixarPdfOS(os: OS) {
     ],
     [
       "Prazo e condições de entrega",
-      lerCampo(textoOcr, ["Prazo e condições de entrega", "Prazo", "Condições de entrega"]),
+      extrairPrazoCondicoes(requisicaoPolicialOcr) || extrairPrazoCondicoes(textoOcr),
     ],
     [
       "Determinação",
-      lerCampo(textoOcr, ["Determinação", "Exigências da autoridade"]) ||
+      extrairDeterminacao(requisicaoPolicialOcr) ||
+        extrairDeterminacao(textoOcr) ||
         lerSecao(solicitacaoOcr, ["determinacao"]),
     ],
   ]);

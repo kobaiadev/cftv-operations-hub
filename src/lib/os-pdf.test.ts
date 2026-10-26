@@ -202,6 +202,40 @@ describe("layout do relatório de OS em PDF", () => {
     expect(texto).toContain("Encaminhar as imagens do período informado.");
   });
 
+  it("extrai campos de ofício policial do cabeçalho, corpo e assinatura do OCR", async () => {
+    const os: OS = {
+      id: "OS-2486",
+      data: "26/10/2026 10:00",
+      loja: "Nagumo Ponte Alta",
+      setor: "Mercearia",
+      ocorrencia: "Furto",
+      descricao: "Subtração de mercadoria.",
+      gravidade: "Alta",
+      status: "Aguardando Imagens",
+      dadosAdicionais: [
+        "Requisição de Imagens (POLICIAL):",
+        "POLÍCIA CIVIL DO ESTADO DO RIO DE JANEIRO",
+        "De: Delegacia de Polícia da 093a. Delegacia de Polícia / Volta Redonda",
+        "OF. 194002-1093/2026 / 05 de outubro de 2026",
+        "Ref.: 093-11871/2026",
+        "Solicito o envio no prazo de 7 dias, em mídia física (CD, DVD ou Pen-Drive), de Segunda a Sexta, das 10h às 16h.",
+        "Imagens do monitoramento que flagraram a subtração da mercadoria e motivaram a abordagem do indivíduo no supermercado Nagumo, unidade Ponte Alta.",
+        "Ítalo Patheli Silva Leite",
+        "Oficial de Polícia Civil - 5.157.346-6",
+      ].join("\n"),
+    };
+
+    await baixarPdfOS(os);
+    const texto = pdf.textos.join("\n");
+
+    expect(texto).toContain("Delegacia de Polícia da 093a. Delegacia de Polícia / Volta Redonda");
+    expect(texto).toContain("Ítalo Patheli Silva Leite - Oficial de Polícia Civil - 5.157.346-6");
+    expect(texto).toContain("OF. 194002-1093/2026 / 05 de outubro de 2026");
+    expect(texto).toContain("093-11871/2026");
+    expect(texto).toContain("prazo de 7 dias, em mídia física (CD, DVD ou Pen-Drive)");
+    expect(texto).toContain("Imagens do monitoramento que flagraram a subtração");
+  });
+
   it("destaca rótulos do relato e exibe providências separadas em tópicos", async () => {
     const os: OS = {
       id: "OS-2484",

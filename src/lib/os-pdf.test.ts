@@ -198,6 +198,31 @@ describe("layout do relatório de OS em PDF", () => {
     expect(pdf.textos.join("\n")).not.toContain("CH-12345");
   });
 
+  it("preserva quebras de parágrafo e separa visualmente os blocos do relato", async () => {
+    const os: OS = {
+      id: "OS-2488",
+      data: "26/10/2026 12:30",
+      loja: "Loja Centro",
+      setor: "Açougue",
+      ocorrencia: "Furto",
+      descricao:
+        "Primeiro parágrafo do relato.\n\nSegundo parágrafo com informações complementares.",
+      gravidade: "Alta",
+      status: "Aguardando Imagens",
+    };
+
+    await baixarPdfOS(os);
+
+    const primeiroParagrafo = pdf.textos.indexOf("Primeiro parágrafo do relato.");
+    const segundoParagrafo = pdf.textos.indexOf(
+      "Segundo parágrafo com informações complementares.",
+    );
+
+    expect(primeiroParagrafo).toBeGreaterThanOrEqual(0);
+    expect(segundoParagrafo).toBeGreaterThan(primeiroParagrafo);
+    expect(pdf.posicoesY[segundoParagrafo]! - pdf.posicoesY[primeiroParagrafo]!).toBeGreaterThan(5);
+  });
+
   it("preenche a requisição com os dados identificados no OCR do registro policial", async () => {
     const os: OS = {
       id: "OS-2485",

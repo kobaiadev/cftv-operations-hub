@@ -287,15 +287,21 @@ function consolidarRelato(textos: string[]) {
   const vistos = new Set<string>();
   const paragrafos: string[] = [];
   for (const texto of textos) {
-    for (const linha of limparTextoCapturado(normalizarTextoRelatorio(texto)).split(/\r?\n/)) {
-      const conteudo = linha.replace(/^\s*[•-]\s*/, "").trim();
-      const chave = normalizarChave(conteudo);
-      if (!chave || vistos.has(chave)) continue;
-      vistos.add(chave);
-      paragrafos.push(conteudo);
+    const textoNormalizado = normalizarTextoRelatorio(texto);
+    for (const bloco of textoNormalizado.split(/\n\s*\n/)) {
+      const linhas = limparTextoCapturado(bloco).split(/\r?\n/);
+      const linhasUnicas: string[] = [];
+      for (const linha of linhas) {
+        const conteudo = linha.replace(/^\s*[•-]\s*/, "").trim();
+        const chave = normalizarChave(conteudo);
+        if (!chave || vistos.has(chave)) continue;
+        vistos.add(chave);
+        linhasUnicas.push(conteudo);
+      }
+      if (linhasUnicas.length) paragrafos.push(linhasUnicas.join("\n"));
     }
   }
-  return paragrafos.join("\n");
+  return paragrafos.join("\n\n");
 }
 
 async function carregar(src: string) {
@@ -432,7 +438,7 @@ export async function baixarPdfOS(os: OS) {
     y += 3;
   };
 
-  const paragrafo = (texto: string, comoLista = false) => {
+  const paragrafo = (texto: string, comoLista = false, espacamentoEntreLinhas = 0) => {
     const normalizado = normalizarTextoRelatorio(texto);
     const fonte = comoLista
       ? normalizado
@@ -484,7 +490,7 @@ export async function baixarPdfOS(os: OS) {
           doc.text(titulo, x, y);
           y += 5;
         }
-        y += 1;
+        y += 1 + espacamentoEntreLinhas;
         continue;
       }
 
@@ -507,6 +513,7 @@ export async function baixarPdfOS(os: OS) {
           doc.text(linhaValor, x, y);
           y += 5;
         }
+        y += espacamentoEntreLinhas;
         continue;
       }
 
@@ -519,6 +526,7 @@ export async function baixarPdfOS(os: OS) {
         doc.text(linhaTexto, x, y);
         y += 5;
       }
+      y += espacamentoEntreLinhas;
     }
     y += 4;
   };
@@ -549,7 +557,7 @@ export async function baixarPdfOS(os: OS) {
   ]);
 
   secao("3. Relato consolidado dos fatos");
-  paragrafo(relatoConsolidado || "Relato não informado.");
+  paragrafo(relatoConsolidado || "Relato não informado.", false, 3);
 
   secao("4. Providências adotadas");
   if (providenciasOcr) paragrafo(providenciasOcr, true);

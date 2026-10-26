@@ -234,6 +234,26 @@ function OrdensPage() {
     }));
     return resultado;
   };
+  const completarDadosDaDescricao = (descricao: string) => {
+    const resultado = interpretarTexto(
+      Object.values(textosOcr.current).join("\n"),
+      nomesLojas,
+      descricao,
+    );
+    setForm((anterior) => ({
+      ...anterior,
+      descricao,
+      data: anterior.data || resultado.data,
+      loja: anterior.loja || resultado.loja,
+      setor: anterior.setor || resultado.setor,
+      ocorrencia: anterior.ocorrencia || resultado.ocorrencia,
+      gravidade: anterior.ocorrencia
+        ? anterior.gravidade
+        : resultado.ocorrencia
+          ? resultado.gravidade
+          : anterior.gravidade,
+    }));
+  };
   const [extras, setExtras] = useState(extraVazio);
   const escolherExtra = async (i: number, f: File | undefined) => {
     if (!f) return;
@@ -370,7 +390,12 @@ function OrdensPage() {
 
   const gerarOS = async () => {
     if (salvandoOS) return;
-    if (!form.ocorrencia.trim()) {
+    const dadosReconhecidos = interpretarTexto(
+      Object.values(textosOcr.current).join("\n"),
+      nomesLojas,
+      form.descricao,
+    );
+    if (!(form.ocorrencia || dadosReconhecidos.ocorrencia).trim()) {
       toast.error("Informe o tipo de ocorrência antes de gerar a OS.");
       return;
     }
@@ -385,20 +410,26 @@ function OrdensPage() {
     extras.forEach(
       (x, i) => x.file && arquivos.push({ rotulo: `Documento adicional ${i + 1}`, file: x.file }),
     );
-    const data = form.data || nowBR();
-    const loja = limparTextoCapturado(form.loja || "Não identificada");
-    const ocorrencia = formatarTextoFormal(form.ocorrencia);
+    const data = form.data || dadosReconhecidos.data || nowBR();
+    const loja = limparTextoCapturado(form.loja || dadosReconhecidos.loja || "Não identificada");
+    const ocorrencia = formatarTextoFormal(form.ocorrencia || dadosReconhecidos.ocorrencia);
+    const setor = limparTextoCapturado(form.setor || dadosReconhecidos.setor || "—");
     const descricao = formatarTextoFormal(form.descricao);
+    const gravidade = form.ocorrencia
+      ? form.gravidade
+      : dadosReconhecidos.ocorrencia
+        ? dadosReconhecidos.gravidade
+        : form.gravidade;
 
     setSalvandoOS(true);
     try {
       const nova = addOS({
         data,
         loja,
-        setor: limparTextoCapturado(form.setor || "—"),
+        setor,
         ocorrencia,
         descricao,
-        gravidade: form.gravidade,
+        gravidade,
         printNome: printFile?.name,
         anexosNomes: arquivos.map((a) => a.file.name),
         reserva: temReserva
@@ -1024,7 +1055,7 @@ function OrdensPage() {
               <Field label="Descrição da ocorrência">
                 <Textarea
                   value={form.descricao}
-                  onChange={(e) => setForm({ ...form, descricao: e.target.value })}
+                  onChange={(e) => completarDadosDaDescricao(e.target.value)}
                   rows={3}
                   placeholder="Preencha manualmente, se necessário."
                 />

@@ -31,6 +31,33 @@ describe("formatação de textos de OS", () => {
     expect(resultado.texto).not.toContain("Encaminhar");
   });
 
+  it("completa dados da OS usando a descrição quando os prints não os identificam", () => {
+    const resultado = interpretarTexto(
+      "Informações incompletas no print.",
+      ["Nagumo Centro"],
+      "Data: 22/10/2026\nLoja: Nagumo Centro\nFurto no açougue.",
+    );
+
+    expect(resultado.data).toBe("22/10/2026");
+    expect(resultado.loja).toBe("Nagumo Centro");
+    expect(resultado.setor).toBe("Açougue");
+    expect(resultado.ocorrencia).toBe("Furto");
+    expect(resultado.gravidade).toBe("Alta");
+  });
+
+  it("prioriza dados dos prints em relação aos dados divergentes da descrição", () => {
+    const resultado = interpretarTexto(
+      "Data: 20/10/2026\nLoja: Nagumo Centro\nFurto no açougue.",
+      ["Nagumo Centro", "Nagumo Matriz"],
+      "Data: 22/10/2026\nLoja: Nagumo Matriz\nAvaria no depósito.",
+    );
+
+    expect(resultado.data).toBe("20/10/2026");
+    expect(resultado.loja).toBe("Nagumo Centro");
+    expect(resultado.ocorrencia).toBe("Furto");
+    expect(resultado.setor).toBe("Açougue");
+  });
+
   it("completa a loja por correspondência exata com o cadastro, ignorando diferenças de caixa e acento", () => {
     const resultado = interpretarTexto("Unidade: NÁGUMO CENTRO", [
       "Nagumo Central",

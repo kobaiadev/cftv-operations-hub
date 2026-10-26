@@ -116,20 +116,28 @@ const SETORES = [
 ];
 
 /** Extrai campos de uma OS a partir do texto lido no print. */
-export function interpretarTexto(texto: string, lojasCadastradas: string[]): OcrResult {
+export function interpretarTexto(
+  texto: string,
+  lojasCadastradas: string[],
+  textoComplementar = "",
+): OcrResult {
   texto = limparTextoCapturado(texto);
   const n = norm(texto);
+  const complementar = textoComplementar.trim()
+    ? interpretarTexto(textoComplementar, lojasCadastradas)
+    : undefined;
 
   // Data dd/mm/aaaa (e hora opcional hh:mm)
   const mData = texto.match(/(\d{2}\/\d{2}\/\d{4})(?:\s+(\d{2}:\d{2}))?/);
-  const data = mData ? `${mData[1]}${mData[2] ? ` ${mData[2]}` : ""}` : "";
+  const data =
+    (mData ? `${mData[1]}${mData[2] ? ` ${mData[2]}` : ""}` : "") || complementar?.data || "";
 
   // Chamado da solicitação de filmagem tem prioridade sobre outros números do print.
   const mChamado = texto.match(/\bchamado\s*[:#-]?\s*([A-Z0-9]+(?:[./-][A-Z0-9]+)*)/i);
   const mRes = n.match(/res(?:erva)?\.?\s*(?:n[ºo°.]*\s*)?(\d{3,})/);
   const reservaNumero = mChamado?.[1] ?? mRes?.[1] ?? "";
 
-  const loja = localizarLoja(texto, lojasCadastradas);
+  const loja = localizarLoja(texto, lojasCadastradas) || complementar?.loja || "";
 
   // Setor
   let setor = "";
@@ -144,6 +152,7 @@ export function interpretarTexto(texto: string, lojasCadastradas: string[]): Ocr
       break;
     }
   }
+  if (!setor) setor = complementar?.setor ?? "";
 
   // Ocorrência e gravidade por palavra-chave
   let ocorrencia = "";
@@ -154,6 +163,10 @@ export function interpretarTexto(texto: string, lojasCadastradas: string[]): Ocr
       gravidade = o.gravidade;
       break;
     }
+  }
+  if (!ocorrencia && complementar?.ocorrencia) {
+    ocorrencia = complementar.ocorrencia;
+    gravidade = complementar.gravidade;
   }
 
   // Descrição: primeiras linhas úteis do texto
@@ -173,7 +186,7 @@ export function interpretarTexto(texto: string, lojasCadastradas: string[]): Ocr
     ocorrencia,
     descricao: formatarTextoFormal(descricao),
     gravidade,
-    reservaNumero,
+    reservaNumero: reservaNumero || complementar?.reservaNumero || "",
   };
 }
 

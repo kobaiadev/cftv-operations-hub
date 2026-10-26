@@ -7,6 +7,7 @@ import {
   ShieldCheck,
   UserPlus,
   ChartNoAxesCombined,
+  ClipboardCheck,
 } from "lucide-react";
 import {
   Sidebar,
@@ -26,6 +27,7 @@ const items = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Ordens de Serviço", url: "/ordens", icon: ClipboardList },
   { title: "Reservas CFTV", url: "/reservas", icon: Cctv },
+  { title: "Supervisão", url: "/supervisao", icon: ClipboardCheck },
   { title: "Cadastro", url: "/cadastro", icon: UserPlus },
   { title: "Configurações", url: "/configuracoes", icon: Settings },
 ] as const;

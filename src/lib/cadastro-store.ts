@@ -20,8 +20,23 @@ export type Pessoa = {
   turno: string;
 };
 export type Perda = { id: string; lojaId: string; mes: string; ano: number; valor: number };
+export type Empresa = { id: string; nome: string; cnpj: string };
+export type TipoSupervisor = "NAGUMO" | "EXTERNO";
+export type Supervisor = {
+  id: string;
+  nome: string;
+  tipo: TipoSupervisor;
+  regiao?: string;
+  empresaId?: string;
+};
 
-type State = { lojas: Loja[]; pessoas: Pessoa[]; perdas: Perda[] };
+type State = {
+  lojas: Loja[];
+  pessoas: Pessoa[];
+  perdas: Perda[];
+  empresas: Empresa[];
+  supervisores: Supervisor[];
+};
 
 const KEY = "pp-cadastro-v2";
 const seed: State = {
@@ -66,6 +81,8 @@ const seed: State = {
     },
   ],
   perdas: [],
+  empresas: [],
+  supervisores: [],
 };
 
 let state: State = seed;
@@ -83,6 +100,8 @@ function load() {
         lojas: saved.lojas ?? seed.lojas,
         pessoas: saved.pessoas ?? seed.pessoas,
         perdas: saved.perdas ?? [],
+        empresas: saved.empresas ?? [],
+        supervisores: saved.supervisores ?? [],
       };
     }
   } catch (error) {
@@ -115,6 +134,7 @@ export function useCadastro() {
       set({ ...state, lojas: state.lojas.map((x) => (x.id === id ? { ...l, id } : x)) }),
     removeLoja: (id: string) =>
       set({
+        ...state,
         lojas: state.lojas.filter((l) => l.id !== id),
         pessoas: state.pessoas.filter((p) => p.lojaId !== id),
         perdas: state.perdas.filter((p) => p.lojaId !== id),
@@ -123,6 +143,17 @@ export function useCadastro() {
       set({ ...state, pessoas: [...state.pessoas, { ...p, id: uid() }] }),
     removePessoa: (id: string) =>
       set({ ...state, pessoas: state.pessoas.filter((p) => p.id !== id) }),
+    addEmpresa: (empresa: Omit<Empresa, "id">) =>
+      set({ ...state, empresas: [...state.empresas, { ...empresa, id: uid() }] }),
+    removeEmpresa: (id: string) =>
+      set({ ...state, empresas: state.empresas.filter((empresa) => empresa.id !== id) }),
+    addSupervisor: (supervisor: Omit<Supervisor, "id">) =>
+      set({ ...state, supervisores: [...state.supervisores, { ...supervisor, id: uid() }] }),
+    removeSupervisor: (id: string) =>
+      set({
+        ...state,
+        supervisores: state.supervisores.filter((supervisor) => supervisor.id !== id),
+      }),
     addPerda: (p: Omit<Perda, "id">) => {
       const existente = state.perdas.find(
         (x) => x.lojaId === p.lojaId && x.mes === p.mes && x.ano === p.ano,

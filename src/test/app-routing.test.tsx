@@ -22,4 +22,12 @@ describe("App routing", () => {
 
     expect(matches.at(-1)?.routeId).toBe("/analise-perdas");
   });
+
+  it("reconhece a página de supervisão", () => {
+    const router = createRouter({ routeTree, context: { queryClient: new QueryClient() } });
+
+    const matches = router.matchRoutes("/supervisao");
+
+    expect(matches.at(-1)?.routeId).toBe("/supervisao");
+  });
 });

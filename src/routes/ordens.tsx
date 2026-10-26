@@ -203,6 +203,11 @@ function OrdensPage() {
   const [bo, setBo] = useState({ numero: "", delegacia: "", data: "" });
   const [lendoBo, setLendoBo] = useState(false);
 
+  // ---- Requisição policial de imagens ----
+  const requisicaoInput = useRef<HTMLInputElement>(null);
+  const [requisicaoFile, setRequisicaoFile] = useState<File | null>(null);
+  const [requisicaoUrl, setRequisicaoUrl] = useState("");
+
   const [osGerada, setOsGerada] = useState<string | null>(null);
   const [salvandoOS, setSalvandoOS] = useState(false);
 
@@ -359,6 +364,9 @@ function OrdensPage() {
     if (printFile) arquivos.push({ rotulo: "Print da ocorrência", file: printFile });
     if (resFile) arquivos.push({ rotulo: "Print da reserva de imagem (CFTV)", file: resFile });
     if (boFile) arquivos.push({ rotulo: "Boletim de Ocorrência", file: boFile });
+    if (requisicaoFile) {
+      arquivos.push({ rotulo: "Requisição de Imagens (POLICIAL)", file: requisicaoFile });
+    }
     extras.forEach(
       (x, i) => x.file && arquivos.push({ rotulo: `Documento adicional ${i + 1}`, file: x.file }),
     );
@@ -435,6 +443,9 @@ function OrdensPage() {
       setBoFile(null);
       setBoUrl("");
       setBo({ numero: "", delegacia: "", data: "" });
+      if (requisicaoUrl) URL.revokeObjectURL(requisicaoUrl);
+      setRequisicaoFile(null);
+      setRequisicaoUrl("");
       textosOcr.current = {};
       setForm({ data: "", loja: "", setor: "", ocorrencia: "", descricao: "", gravidade: "Média" });
       setExtras(extraVazio());
@@ -622,7 +633,7 @@ function OrdensPage() {
           adicionais também complementam campos não identificados nos três uploads principais.
         </p>
 
-        <div className="grid gap-6 lg:grid-cols-3">
+        <div className="grid gap-6 lg:grid-cols-2 xl:grid-cols-4">
           {/* Print da ocorrência */}
           <div>
             <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -817,6 +828,47 @@ function OrdensPage() {
               </Field>
             </div>
           </div>
+
+          {/* Requisição policial de imagens */}
+          <div>
+            <p className="mb-2 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              <FileText className="size-3.5 text-primary" /> 4. Requisição de Imagens (POLICIAL)
+            </p>
+            <input
+              ref={requisicaoInput}
+              type="file"
+              accept="image/*,application/pdf"
+              className="hidden"
+              onChange={(event) => {
+                const arquivo = event.target.files?.[0];
+                if (!arquivo) return;
+                setRequisicaoFile(arquivo);
+                if (requisicaoUrl) URL.revokeObjectURL(requisicaoUrl);
+                setRequisicaoUrl(arquivo.type.startsWith("image/") ? URL.createObjectURL(arquivo) : "");
+                event.target.value = "";
+              }}
+            />
+            <UploadBox
+              url={requisicaoUrl}
+              alt="Requisição policial de imagens"
+              texto={requisicaoFile?.name ?? "Clique para enviar a requisição policial"}
+              onClick={() => requisicaoInput.current?.click()}
+            />
+            {requisicaoFile && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="mt-2"
+                onClick={() => {
+                  if (requisicaoUrl) URL.revokeObjectURL(requisicaoUrl);
+                  setRequisicaoFile(null);
+                  setRequisicaoUrl("");
+                }}
+              >
+                <Trash2 /> Remover requisição
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Documentos adicionais */}
@@ -865,7 +917,7 @@ function OrdensPage() {
         {/* Dados da OS */}
         <div className="mt-6 border-t border-border pt-5">
           <p className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            4. Dados da OS
+            5. Dados da OS
           </p>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Field label="Data da ocorrência">

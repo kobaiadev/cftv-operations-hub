@@ -51,13 +51,24 @@ function lerCampo(texto: string, rotulos: string[]) {
 
 function lerSecao(texto: string, titulos: string[]) {
   const titulosNormalizados = titulos.map(normalizarChave);
-  const linhas = limparTextoCapturado(texto).split(/\r?\n/);
+  const linhas = limparTextoCapturado(normalizarTextoRelatorio(texto)).split(/\r?\n/);
   const inicio = linhas.findIndex((linha) => {
     const titulo = normalizarChave(linha.replace(/^\d+[.)]\s*/, ""));
     return titulosNormalizados.some((item) => titulo.startsWith(item));
   });
   if (inicio < 0) return "";
   const conteudo: string[] = [];
+  const linhaTitulo = linhas[inicio];
+  if (!linhaTitulo) return "";
+  const tituloLinha = linhaTitulo.replace(/^\d+[.)]\s*/, "");
+  const separador = tituloLinha.indexOf(":");
+  if (separador >= 0) {
+    const tituloAntesDoSeparador = normalizarChave(tituloLinha.slice(0, separador));
+    if (titulosNormalizados.some((item) => tituloAntesDoSeparador.startsWith(item))) {
+      const valorNaLinha = tituloLinha.slice(separador + 1).trim();
+      if (valorNaLinha) conteudo.push(valorNaLinha);
+    }
+  }
   for (const linha of linhas.slice(inicio + 1)) {
     const chave = normalizarChave(linha.replace(/^\d+[.)]\s*/, ""));
     if (SECOES_RELATORIO.some((secao) => chave.startsWith(normalizarChave(secao)))) break;
@@ -71,6 +82,7 @@ const ROTULOS_RELATORIO = [
   "Loja",
   "Setor",
   "Data e Horário da Ocorrência",
+  "Horário",
   "Tipo de Ocorrência",
   "Gravidade",
   "Status",
@@ -92,14 +104,58 @@ const ROTULOS_RELATORIO = [
   "GLPI/TI",
 ];
 
+const ROTULOS_DESTACADOS = [
+  "fiscal",
+  "vigilante",
+  "tipo de ocorrencia",
+  "data",
+  "horario",
+  "relato",
+  "providencias adotadas",
+  "solicitacao oficial de imagens",
+];
+
+const ROTULOS_EM_LINHA = [
+  "FISCAL",
+  "VIGILANTE",
+  "TIPO DE OCORRÊNCIA",
+  "DATA",
+  "HORÁRIO",
+  "RELATO",
+  "PROVIDÊNCIAS ADOTADAS",
+  "SOLICITAÇÃO OFICIAL DE IMAGENS",
+];
+
+export function normalizarTextoRelatorio(texto: string): string {
+  const rotulos = ROTULOS_EM_LINHA.map((rotulo) => rotulo.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+    .sort((a, b) => b.length - a.length)
+    .join("|");
+  const antesDoRotulo = new RegExp(`\\s+(?=(?:${rotulos})\\s*:)`, "giu");
+
+  return texto
+    .replace(/#\s*ô\s*h\s*o\s*r\s*á\s*r\s*i\s*o\s*:?/giu, "HORÁRIO:")
+    .replace(/#\s*h\s*o\s*r\s*a\s*r\s*i\s*o\s*:?/giu, "HORÁRIO:")
+    .replace(antesDoRotulo, "\n")
+    .split(/\r?\n/)
+    .map((linha) => linha.replace(/[ \t]+/g, " ").trim())
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 function removerMetadados(texto: string) {
+  let dentroDeSecao = false;
   return texto
     .split(/\r?\n/)
     .filter((linha) => {
       const limpa = linha.trim();
       if (!limpa) return false;
       const chave = normalizarChave(limpa.replace(/^\d+[.)]\s*/, ""));
-      if (SECOES_RELATORIO.some((secao) => chave.startsWith(normalizarChave(secao)))) return false;
+      if (SECOES_RELATORIO.some((secao) => chave.startsWith(normalizarChave(secao)))) {
+        dentroDeSecao = true;
+        return false;
+      }
+      if (dentroDeSecao) return false;
       if (
         /^(?:print da ocorrencia|reserva de imagem|boletim de ocorrencia|documento adicional \d+):?$/i.test(
           limpa,
@@ -119,7 +175,7 @@ function consolidarRelato(textos: string[]) {
   const vistos = new Set<string>();
   const paragrafos: string[] = [];
   for (const texto of textos) {
-    for (const linha of limparTextoCapturado(texto).split(/\r?\n/)) {
+    for (const linha of limparTextoCapturado(normalizarTextoRelatorio(texto)).split(/\r?\n/)) {
       const conteudo = linha.replace(/^\s*[•-]\s*/, "").trim();
       const chave = normalizarChave(conteudo);
       if (!chave || vistos.has(chave)) continue;
@@ -145,7 +201,7 @@ export async function baixarPdfOS(os: OS) {
   const M = 18;
   const CW = W - M * 2;
   let y = 0;
-  const textoOcr = limparTextoCapturado(os.dadosAdicionais ?? "");
+  const textoOcr = limparTextoCapturado(normalizarTextoRelatorio(os.dadosAdicionais ?? ""));
   const relatoOcr = lerSecao(textoOcr, ["relato consolidado dos fatos", "relato dos fatos"]);
   const providenciasOcr = removerMetadados(lerSecao(textoOcr, ["providencias adotadas"]));
   const solicitacaoOcr = lerSecao(textoOcr, [
@@ -262,31 +318,99 @@ export async function baixarPdfOS(os: OS) {
     y += 3;
   };
 
-  const paragrafo = (texto: string) => {
-    const formal = formatarTextoFormal(texto);
+  const paragrafo = (texto: string, comoLista = false) => {
+    const normalizado = normalizarTextoRelatorio(texto);
+    const fonte = comoLista
+      ? normalizado
+          .split(/[;\n]+/)
+          .map((item) => item.replace(/^\s*[•-]\s*/, "").trim())
+          .filter(Boolean)
+          .map((item) => `• ${item}`)
+          .join("\n")
+      : normalizado;
+    const formal = fonte
+      .split(/\n\s*\n/)
+      .map((bloco) => formatarTextoFormal(bloco))
+      .filter(Boolean)
+      .join("\n\n");
     if (!formal) return;
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9.5);
-    doc.setTextColor(25, 25, 35);
-    const linhasTexto = formal
-      .split("\n")
-      .flatMap((linha) => doc.splitTextToSize(linha, CW - 8) as string[]);
-    for (const [i, linha] of linhasTexto.entries()) {
-      garantir(5);
-      const ultimaLinha = i === linhasTexto.length - 1;
-      const largura = doc.getTextWidth(linha);
-      const espacoCaracter =
-        !ultimaLinha && linha.length > 1
-          ? Math.min(0.45, Math.max(0, (CW - 8 - largura) / (linha.length - 1)))
-          : 0;
-      doc.text(linha, M + 4, y, { charSpace: espacoCaracter });
-      y += 4.8;
+    const blocos = formal.split("\n");
+    for (const bloco of blocos) {
+      const linha = bloco.trim();
+      if (!linha) {
+        y += 2.5;
+        continue;
+      }
+
+      const itemLista = linha.startsWith("• ");
+      const conteudo = itemLista ? linha.slice(2).trim() : linha;
+      const correspondencia = conteudo.match(/^([^:]{2,55}:)\s*(.*)$/);
+      const rotulo = correspondencia?.[1] ?? "";
+      const valor = correspondencia?.[2] ?? "";
+      const destacar =
+        rotulo !== "" && ROTULOS_DESTACADOS.includes(normalizarChave(rotulo.slice(0, -1)));
+      const recuo = itemLista ? 9 : 4;
+      const x = M + recuo;
+      const larguraDisponivel = CW - recuo - 4;
+
+      if (itemLista) {
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(9.5);
+        doc.setTextColor(25, 25, 35);
+        doc.text("•", M + 4, y);
+      }
+
+      if (destacar && !valor) {
+        const titulos = doc.splitTextToSize(rotulo, larguraDisponivel) as string[];
+        for (const titulo of titulos) {
+          garantir(5);
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(9.5);
+          doc.setTextColor(55, 65, 80);
+          doc.text(titulo, x, y);
+          y += 5;
+        }
+        y += 1;
+        continue;
+      }
+
+      if (destacar) {
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(9.5);
+        doc.setTextColor(55, 65, 80);
+        doc.text(rotulo, x, y);
+        const larguraRotulo = doc.getTextWidth(rotulo) + 1.5;
+        const linhasValor = doc.splitTextToSize(
+          valor,
+          Math.max(20, larguraDisponivel - larguraRotulo),
+        ) as string[];
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(25, 25, 35);
+        doc.text(linhasValor[0] ?? "", x + larguraRotulo, y);
+        y += 5;
+        for (const linhaValor of linhasValor.slice(1)) {
+          garantir(5);
+          doc.text(linhaValor, x, y);
+          y += 5;
+        }
+        continue;
+      }
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9.5);
+      doc.setTextColor(55, 65, 80);
+      const linhasTexto = doc.splitTextToSize(conteudo, larguraDisponivel) as string[];
+      for (const linhaTexto of linhasTexto) {
+        garantir(5);
+        doc.text(linhaTexto, x, y);
+        y += 5;
+      }
     }
-    y += 3;
+    y += 4;
   };
 
   secao("1. Dados gerais da ocorrência");
-  linhas([
+  const dadosGerais: [string, string][] = [
     ["OS / Identificação", os.id],
     ["Loja", os.loja],
     ["Setor", os.setor],
@@ -294,7 +418,10 @@ export async function baixarPdfOS(os: OS) {
     ["Tipo de ocorrência", os.ocorrencia],
     ["Gravidade", os.gravidade],
     ["Status", os.status],
-  ]);
+  ];
+  const horarioOcr = lerCampo(textoOcr, ["Horário"]);
+  if (horarioOcr) dadosGerais.splice(4, 0, ["HORÁRIO", horarioOcr]);
+  linhas(dadosGerais);
 
   secao("2. Envolvidos e equipe");
   linhas([
@@ -307,22 +434,45 @@ export async function baixarPdfOS(os: OS) {
   paragrafo(relatoConsolidado || "Relato não informado.");
 
   secao("4. Providências adotadas");
-  if (providenciasOcr) paragrafo(providenciasOcr);
-  paragrafo(`Ordem de Serviço nº ${os.id} registrada no sistema.`);
+  if (providenciasOcr) paragrafo(providenciasOcr, true);
+  paragrafo(`Ordem de Serviço nº ${os.id} registrada no sistema.`, true);
   if (os.status !== "Aguardando Imagens") {
-    paragrafo(`Status atualizado para ${os.status}.`);
+    paragrafo(`Status atualizado para ${os.status}.`, true);
   }
-  if (os.reserva) paragrafo(`Reserva de imagens nº ${os.reserva.numero} vinculada à ocorrência.`);
+  if (os.reserva)
+    paragrafo(`Reserva de imagens nº ${os.reserva.numero} vinculada à ocorrência.`, true);
   if (os.bo) {
-    paragrafo(`Boletim de Ocorrência nº ${os.bo.numero} vinculado à ocorrência.`);
+    paragrafo(`Boletim de Ocorrência nº ${os.bo.numero} vinculado à ocorrência.`, true);
   }
 
   secao("5. Solicitação e requisição oficial de imagens");
+  const orgaoSolicitante = lerCampo(textoOcr, [
+    "Órgão solicitante",
+    "Órgão",
+    "Delegacia",
+    "Distrito Policial",
+    "Unidade policial",
+  ]);
+  const procedimentoReferencia = lerCampo(textoOcr, [
+    "Procedimento / referência",
+    "Procedimento",
+    "Referência",
+    "Inquérito policial",
+    "Inquérito",
+    "Registro de ocorrência",
+  ]);
   linhas([
-    ["Órgão solicitante", lerCampo(textoOcr, ["Órgão solicitante"])],
+    ["Órgão solicitante", orgaoSolicitante || os.bo?.delegacia || ""],
     [
       "Autoridade policial / matrícula",
-      lerCampo(textoOcr, ["Autoridade policial / matrícula", "Autoridade policial", "Matrícula"]),
+      lerCampo(textoOcr, [
+        "Autoridade policial / matrícula",
+        "Autoridade policial",
+        "Delegado",
+        "Delegada",
+        "Escrivão",
+        "Matrícula",
+      ]),
     ],
     [
       "Número do ofício / data",
@@ -330,7 +480,10 @@ export async function baixarPdfOS(os: OS) {
     ],
     [
       "Procedimento / referência",
-      lerCampo(textoOcr, ["Procedimento / referência", "Procedimento", "Referência"]),
+      procedimentoReferencia ||
+        (os.bo?.numero
+          ? `Boletim de Ocorrência nº ${os.bo.numero}${os.bo.data ? `, registrado em ${os.bo.data}` : ""}`
+          : ""),
     ],
     [
       "Prazo e condições de entrega",

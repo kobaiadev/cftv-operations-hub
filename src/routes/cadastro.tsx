@@ -337,8 +337,11 @@ function PessoasTab({ funcao, label, plural }: { funcao: Funcao; label: string; 
   const { lojas, pessoas, addPessoa, removePessoa } = useCadastro();
   const empty = { nome: "", matricula: "", telefone: "", lojaId: "", turno: "" };
   const [form, setForm] = useState(empty);
+  const [lojaFiltro, setLojaFiltro] = useState("todas");
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const lista = pessoas.filter((p) => p.funcao === funcao);
+  const lista = pessoas.filter(
+    (p) => p.funcao === funcao && (lojaFiltro === "todas" || p.lojaId === lojaFiltro),
+  );
   const lojaNome = (id: string) => {
     const l = lojas.find((x) => x.id === id);
     return l ? l.nome : "—";
@@ -412,6 +415,25 @@ function PessoasTab({ funcao, label, plural }: { funcao: Funcao; label: string; 
         </form>
       </Panel>
       <Panel title={`${plural} cadastrados (${lista.length})`}>
+        {funcao === "fiscal" && (
+          <div className="px-5 pt-4">
+            <Field label="Filtrar fiscais por loja">
+              <Select value={lojaFiltro} onValueChange={setLojaFiltro}>
+                <SelectTrigger className="w-full sm:max-w-sm">
+                  <SelectValue placeholder="Selecione uma loja" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todas">Todas as lojas</SelectItem>
+                  {lojas.map((loja) => (
+                    <SelectItem key={loja.id} value={loja.id}>
+                      {loja.nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+          </div>
+        )}
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">

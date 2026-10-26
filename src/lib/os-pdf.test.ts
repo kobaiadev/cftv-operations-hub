@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const pdf = vi.hoisted(() => ({
   textos: [] as string[],
   opcoesTexto: [] as ({ align?: string; charSpace?: number } | undefined)[],
+  posicoesY: [] as number[],
 }));
 
 vi.mock("jspdf", () => {
@@ -45,11 +46,12 @@ vi.mock("jspdf", () => {
     text(
       texto: string | string[],
       _x: number,
-      _y: number,
+      y: number,
       opcoes?: { align?: string; charSpace?: number },
     ) {
       pdf.textos.push(...(Array.isArray(texto) ? texto : [texto]));
       pdf.opcoesTexto.push(opcoes);
+      pdf.posicoesY.push(y);
     }
   }
 
@@ -60,13 +62,14 @@ vi.mock("@/lib/os-files", () => ({
   lerAnexos: vi.fn().mockResolvedValue([]),
 }));
 
-import { baixarPdfOS } from "@/lib/os-pdf";
+import { baixarPdfOS, normalizarTextoRelatorio } from "@/lib/os-pdf";
 import type { OS } from "@/lib/os-store";
 
 describe("layout do relatório de OS em PDF", () => {
   beforeEach(() => {
     pdf.textos.length = 0;
     pdf.opcoesTexto.length = 0;
+    pdf.posicoesY.length = 0;
     vi.stubGlobal(
       "Image",
       class {
@@ -80,6 +83,12 @@ describe("layout do relatório de OS em PDF", () => {
 
   afterEach(() => {
     vi.unstubAllGlobals();
+  });
+
+  it("corrige rótulos OCR compactados e padroniza o campo de horário", () => {
+    expect(
+      normalizarTextoRelatorio("#ô H O R Á R I O : 18:30 FISCAL: Ana Silva VIGILANTE: João Souza"),
+    ).toBe("HORÁRIO: 18:30\nFISCAL: Ana Silva\nVIGILANTE: João Souza");
   });
 
   it("organiza o relatório em seções e identifica os responsáveis pelas assinaturas", async () => {
@@ -160,7 +169,74 @@ describe("layout do relatório de OS em PDF", () => {
     expect(texto).toContain("Não informado");
   });
 
-  it("usa espaçamento de justificação nos parágrafos que ocupam mais de uma linha", async () => {
+  it("preenche a requisição com os dados identificados no OCR do registro policial", async () => {
+    const os: OS = {
+      id: "OS-2485",
+      data: "24/10/2026 12:00",
+      loja: "Loja Centro",
+      setor: "Açougue",
+      ocorrencia: "Furto",
+      descricao: "Registro policial recebido.",
+      gravidade: "Alta",
+      status: "Aguardando Imagens",
+      dadosAdicionais: [
+        "Boletim de Ocorrência:",
+        "Delegacia: 2º Distrito Policial",
+        "Autoridade policial: Delegada Ana Souza",
+        "Ofício: nº 123/2026, de 24/10/2026",
+        "Inquérito: 456/2026",
+        "Prazo: 10 dias, por meio digital",
+        "Determinação: Encaminhar as imagens do período informado.",
+      ].join("\n"),
+    };
+
+    await baixarPdfOS(os);
+    const texto = pdf.textos.join("\n");
+
+    expect(texto).toContain("Órgão solicitante:");
+    expect(texto).toContain("2º Distrito Policial");
+    expect(texto).toContain("Delegada Ana Souza");
+    expect(texto).toContain("nº 123/2026");
+    expect(texto).toContain("Inquérito: 456/2026");
+    expect(texto).toContain("10 dias, por meio digital");
+    expect(texto).toContain("Encaminhar as imagens do período informado.");
+  });
+
+  it("destaca rótulos do relato e exibe providências separadas em tópicos", async () => {
+    const os: OS = {
+      id: "OS-2484",
+      data: "23/10/2026 18:30",
+      loja: "Loja Centro",
+      setor: "Açougue",
+      ocorrencia: "Furto",
+      descricao: "RELATO: A equipe identificou uma ocorrência durante a ronda.",
+      gravidade: "Alta",
+      status: "Aguardando Imagens",
+      dadosAdicionais: [
+        "#ô H O R Á R I O : 18:30",
+        "Envolvidos e equipe",
+        "Fiscal: Ana Silva",
+        "Vigilante: João Souza",
+        "Providências adotadas",
+        "A gerência foi comunicada; A área foi isolada;",
+        "Solicitação oficial de imagens",
+      ].join("\n"),
+    };
+
+    await baixarPdfOS(os);
+    const texto = pdf.textos.join("\n");
+
+    expect(texto).toContain("HORÁRIO:");
+    expect(texto).toContain("18:30");
+    expect(texto).toContain("Fiscal:");
+    expect(texto).toContain("Vigilante:");
+    expect(texto).toContain("RELATO:");
+    expect(pdf.textos.filter((linha) => linha === "•")).toHaveLength(3);
+    expect(texto).toContain("A gerência foi comunicada");
+    expect(texto).toContain("A área foi isolada");
+  });
+
+  it("usa espaçamento confortável entre linhas de parágrafos longos", async () => {
     const os: OS = {
       id: "OS-2482",
       data: "21/10/2026 10:00",
@@ -175,6 +251,9 @@ describe("layout do relatório de OS em PDF", () => {
 
     await baixarPdfOS(os);
 
-    expect(pdf.opcoesTexto.some((opcoes) => (opcoes?.charSpace ?? 0) > 0)).toBe(true);
+    const temLinhaComEspacamentoConfortavel = pdf.posicoesY.some((posicao, indice, todas) =>
+      todas.slice(indice + 1).some((seguinte) => Math.abs(seguinte - posicao - 5) < 0.001),
+    );
+    expect(temLinhaComEspacamentoConfortavel).toBe(true);
   });
 });

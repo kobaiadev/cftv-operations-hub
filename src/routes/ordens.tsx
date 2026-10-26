@@ -207,6 +207,7 @@ function OrdensPage() {
   const requisicaoInput = useRef<HTMLInputElement>(null);
   const [requisicaoFile, setRequisicaoFile] = useState<File | null>(null);
   const [requisicaoUrl, setRequisicaoUrl] = useState("");
+  const [lendoRequisicao, setLendoRequisicao] = useState(false);
 
   const [osGerada, setOsGerada] = useState<string | null>(null);
   const [salvandoOS, setSalvandoOS] = useState(false);
@@ -353,6 +354,20 @@ function OrdensPage() {
     }
   };
 
+  const lerRequisicao = async (file: File) => {
+    if (!file.type.startsWith("image/")) return;
+    setLendoRequisicao(true);
+    try {
+      const texto = await lerImagem(file, () => {});
+      atualizarDadosBO("Requisição de Imagens (POLICIAL)", texto);
+      toast.success("Requisição policial lida.");
+    } catch {
+      toast.error("Não foi possível ler a imagem da requisição policial.");
+    } finally {
+      setLendoRequisicao(false);
+    }
+  };
+
   const gerarOS = async () => {
     if (salvandoOS) return;
     if (!form.ocorrencia.trim()) {
@@ -377,16 +392,6 @@ function OrdensPage() {
 
     setSalvandoOS(true);
     try {
-      const { error } = await obterClienteSupabase()
-        .from("work_orders")
-        .insert({
-          store_name: loja,
-          event_date: normalizarDataSupabase(data),
-          occurrence_type: ocorrencia,
-          description: descricao,
-        });
-      if (error) throw error;
-
       const nova = addOS({
         data,
         loja,
@@ -411,7 +416,36 @@ function OrdensPage() {
               imagemNome: limparTextoCapturado(boFile?.name ?? "—"),
             }
           : undefined,
+        dadosAdicionais:
+          Object.entries(textosOcr.current)
+            .filter(([, texto]) => texto.trim())
+            .map(([fonte, texto]) => `${fonte}:\n${texto.trim()}`)
+            .join("\n\n") || undefined,
       });
+      setOsGerada(nova.id);
+      setFiltroLoja("todas");
+      setFiltroData("");
+      setFiltroTexto("");
+
+      let erroSupabase: unknown;
+      try {
+        const { error } = await obterClienteSupabase()
+          .from("work_orders")
+          .insert({
+            store_name: loja,
+            event_date: normalizarDataSupabase(data),
+            occurrence_type: ocorrencia,
+            description: descricao,
+          });
+        if (error) throw error;
+      } catch (error) {
+        erroSupabase = error;
+        console.error(
+          `A ${nova.id} foi criada localmente, mas não sincronizada com o Supabase.`,
+          error,
+        );
+      }
+
       try {
         const anexos = await Promise.all(
           arquivos.map(async (a) => ({
@@ -428,13 +462,20 @@ function OrdensPage() {
           error,
         );
         toast.error(
-          "A OS foi salva no Supabase, mas não foi possível guardar as imagens localmente.",
+          "A OS foi criada no painel, mas não foi possível guardar as imagens localmente.",
         );
       }
-      setOsGerada(nova.id);
-      toast.success(
-        `${nova.id} salva no Supabase${temReserva ? ` · reserva ${resNumero.trim()}` : ""}${bo.numero.trim() ? ` · BO ${bo.numero.trim()}` : ""}.`,
-      );
+      if (erroSupabase) {
+        const mensagem =
+          erroSupabase instanceof Error ? erroSupabase.message : "Erro desconhecido.";
+        toast.error(
+          `${nova.id} criada no painel local, mas não sincronizada com o Supabase: ${mensagem}`,
+        );
+      } else {
+        toast.success(
+          `${nova.id} salva no Supabase${temReserva ? ` · reserva ${resNumero.trim()}` : ""}${bo.numero.trim() ? ` · BO ${bo.numero.trim()}` : ""}.`,
+        );
+      }
       setPrintFile(null);
       setPrintUrl("");
       setResFile(null);
@@ -450,9 +491,9 @@ function OrdensPage() {
       setForm({ data: "", loja: "", setor: "", ocorrencia: "", descricao: "", gravidade: "Média" });
       setExtras(extraVazio());
     } catch (error) {
-      console.error("Não foi possível salvar a OS na tabela work_orders.", error);
+      console.error("Não foi possível criar a OS no painel local.", error);
       const mensagem = error instanceof Error ? error.message : "Erro desconhecido.";
-      toast.error(`Não foi possível salvar a OS no Supabase: ${mensagem}`);
+      toast.error(`Não foi possível criar a OS no painel: ${mensagem}`);
     } finally {
       setSalvandoOS(false);
     }
@@ -844,14 +885,21 @@ function OrdensPage() {
                 if (!arquivo) return;
                 setRequisicaoFile(arquivo);
                 if (requisicaoUrl) URL.revokeObjectURL(requisicaoUrl);
-                setRequisicaoUrl(arquivo.type.startsWith("image/") ? URL.createObjectURL(arquivo) : "");
+                setRequisicaoUrl(
+                  arquivo.type.startsWith("image/") ? URL.createObjectURL(arquivo) : "",
+                );
+                void lerRequisicao(arquivo);
                 event.target.value = "";
               }}
             />
             <UploadBox
               url={requisicaoUrl}
               alt="Requisição policial de imagens"
-              texto={requisicaoFile?.name ?? "Clique para enviar a requisição policial"}
+              texto={
+                lendoRequisicao
+                  ? "Lendo imagem da requisição..."
+                  : (requisicaoFile?.name ?? "Clique para enviar a requisição policial")
+              }
               onClick={() => requisicaoInput.current?.click()}
             />
             {requisicaoFile && (

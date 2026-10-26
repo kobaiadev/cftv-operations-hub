@@ -49,6 +49,14 @@ function lerCampo(texto: string, rotulos: string[]) {
   return "";
 }
 
+function lerEnvolvidoNaDescricao(descricao: string, rotulos: string[]) {
+  const descricaoNormalizada = descricao.replace(
+    /\s+(?=(?:gerente(?:\s+responsável)?|fiscal)\s*:)/giu,
+    "\n",
+  );
+  return lerCampo(descricaoNormalizada, rotulos);
+}
+
 function buscarValorRotulado(texto: string, rotulos: RegExp) {
   const linhas = texto.split(/\r?\n/).map((linha) => linha.trim());
   for (let indice = 0; indice < linhas.length; indice++) {
@@ -531,8 +539,12 @@ export async function baixarPdfOS(os: OS) {
 
   secao("2. Envolvidos e equipe");
   linhas([
-    ["Gerente responsável", lerCampo(textoOcr, ["Gerente responsável", "Gerente"])],
-    ["Fiscal", lerCampo(textoOcr, ["Fiscal"])],
+    [
+      "Gerente responsável",
+      lerEnvolvidoNaDescricao(os.descricao, ["Gerente responsável", "Gerente"]) ||
+        lerCampo(textoOcr, ["Gerente responsável", "Gerente"]),
+    ],
+    ["Fiscal", lerEnvolvidoNaDescricao(os.descricao, ["Fiscal"]) || lerCampo(textoOcr, ["Fiscal"])],
     ["Vigilante", lerCampo(textoOcr, ["Vigilante"])],
   ]);
 
@@ -600,17 +612,7 @@ export async function baixarPdfOS(os: OS) {
   if (solicitacaoOcr) paragrafo(removerMetadados(solicitacaoOcr));
 
   secao("6. Registros internos e anexos");
-  const protocolo = lerCampo(textoOcr, [
-    "Chamados / Protocolos",
-    "Chamado",
-    "Chamado GLPI/TI",
-    "Chamados GLPI/TI",
-    "Protocolo",
-    "Protocolo GLPI",
-    "GLPI/TI",
-  ]);
   linhas([
-    ["Chamados / Protocolos", protocolo],
     [
       "Documentos vinculados",
       [

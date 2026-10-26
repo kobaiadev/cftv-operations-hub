@@ -165,8 +165,37 @@ describe("layout do relatório de OS em PDF", () => {
       texto.match(/O vigilante observou a retirada de mercadorias sem pagamento\./g),
     ).toHaveLength(1);
     expect(texto).not.toContain("Solicita-se a preservação");
-    expect(texto).toContain("Chamados / Protocolos:");
+    expect(texto).not.toContain("Chamados / Protocolos:");
     expect(texto).toContain("Não informado");
+  });
+
+  it("usa gerente e fiscal descritos na ocorrência e omite chamados do PDF", async () => {
+    const os: OS = {
+      id: "OS-2487",
+      data: "26/10/2026 12:00",
+      loja: "Loja Centro",
+      setor: "Açougue",
+      ocorrencia: "Furto",
+      descricao: "GERENTE RESPONSÁVEL: Ana Silva FISCAL: Bruno Santos",
+      gravidade: "Alta",
+      status: "Aguardando Imagens",
+      dadosAdicionais: "Vigilante: Carlos Souza\nChamados / Protocolos: CH-12345",
+    };
+
+    await baixarPdfOS(os);
+    const inicioEnvolvidos = pdf.textos.indexOf("2. ENVOLVIDOS E EQUIPE");
+    const fimEnvolvidos = pdf.textos.indexOf("3. RELATO CONSOLIDADO DOS FATOS");
+    const envolvidos = pdf.textos.slice(inicioEnvolvidos, fimEnvolvidos).join("\n");
+
+    expect(envolvidos).toContain("Gerente responsável:");
+    expect(envolvidos).toContain("Ana Silva");
+    expect(envolvidos).not.toContain("Não informado");
+    expect(envolvidos).toContain("Fiscal:");
+    expect(envolvidos).toContain("Bruno Santos");
+    expect(envolvidos).toContain("Vigilante:");
+    expect(envolvidos).toContain("Carlos Souza");
+    expect(pdf.textos.join("\n")).not.toContain("Chamados / Protocolos:");
+    expect(pdf.textos.join("\n")).not.toContain("CH-12345");
   });
 
   it("preenche a requisição com os dados identificados no OCR do registro policial", async () => {

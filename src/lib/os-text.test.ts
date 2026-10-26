@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { interpretarBO, interpretarTexto } from "@/lib/ocr";
+import { interpretarBO, interpretarTexto, textoIndicaCodigoDeBarras } from "@/lib/ocr";
 import { formatarTextoFormal, limparTextoCapturado } from "@/lib/os-text";
 
 describe("formatação de textos de OS", () => {
@@ -45,6 +45,16 @@ describe("formatação de textos de OS", () => {
     expect(resultado.gravidade).toBe("Alta");
   });
 
+  it("usa o valor explícito de tipo de ocorrência informado na descrição", () => {
+    const resultado = interpretarTexto(
+      "Informações incompletas no print.",
+      [],
+      "Tipo de ocorrência: Tentativa de fraude no caixa.",
+    );
+
+    expect(resultado.ocorrencia).toBe("Tentativa de fraude no caixa");
+  });
+
   it("prioriza dados dos prints em relação aos dados divergentes da descrição", () => {
     const resultado = interpretarTexto(
       "Data: 20/10/2026\nLoja: Nagumo Centro\nFurto no açougue.",
@@ -56,6 +66,13 @@ describe("formatação de textos de OS", () => {
     expect(resultado.loja).toBe("Nagumo Centro");
     expect(resultado.ocorrencia).toBe("Furto");
     expect(resultado.setor).toBe("Açougue");
+  });
+
+  it("detecta códigos GTIN completos no texto reconhecido por OCR", () => {
+    expect(textoIndicaCodigoDeBarras("Produto\n4006381333931\nLoja Centro")).toBe(true);
+    expect(textoIndicaCodigoDeBarras("036000291452")).toBe(true);
+    expect(textoIndicaCodigoDeBarras("4006381333932")).toBe(false);
+    expect(textoIndicaCodigoDeBarras("Ocorrência no setor de bebidas")).toBe(false);
   });
 
   it("completa a loja por correspondência exata com o cadastro, ignorando diferenças de caixa e acento", () => {

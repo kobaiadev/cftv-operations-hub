@@ -164,6 +164,17 @@ export function interpretarTexto(
       break;
     }
   }
+  const ocorrenciaDeclarada = texto
+    .match(/(?:tipo\s+de\s+ocorr[eê]ncia|ocorr[eê]ncia)\s*[:-]\s*([^\n;]+)/i)?.[1]
+    ?.trim()
+    .replace(/[.,!?]+$/, "");
+  if (ocorrenciaDeclarada) {
+    ocorrencia = ocorrenciaDeclarada;
+    const gravidadeDeclarada = OCORRENCIAS.find((item) =>
+      norm(ocorrenciaDeclarada).includes(item.chave),
+    );
+    if (gravidadeDeclarada) gravidade = gravidadeDeclarada.gravidade;
+  }
   if (!ocorrencia && complementar?.ocorrencia) {
     ocorrencia = complementar.ocorrencia;
     gravidade = complementar.gravidade;
@@ -266,4 +277,56 @@ export async function lerImagem(file: File, onProgress: (pct: number) => void): 
   } finally {
     await worker.terminate();
   }
+}
+
+function digitoVerificadorGtinValido(digitos: string) {
+  const payload = digitos.slice(0, -1);
+  const esperado = Number(digitos.at(-1));
+  const soma = [...payload]
+    .reverse()
+    .reduce((total, digito, indice) => total + Number(digito) * (indice % 2 === 0 ? 3 : 1), 0);
+  return (10 - (soma % 10)) % 10 === esperado;
+}
+
+export function textoIndicaCodigoDeBarras(texto: string) {
+  return texto.split(/\r?\n/).some((linha) => {
+    const candidata = linha.trim();
+    if (!/^[\d\s.-]+$/.test(candidata)) return false;
+    const digitos = candidata.replace(/\D/g, "");
+    return [8, 12, 13, 14].includes(digitos.length) && digitoVerificadorGtinValido(digitos);
+  });
+}
+
+async function imagemContemCodigoDeBarras(file: File) {
+  type BarcodeDetectorNativo = {
+    detect: (source: ImageBitmap) => Promise<unknown[]>;
+  };
+  type ConstrutorBarcodeDetector = new () => BarcodeDetectorNativo;
+
+  const construtor = (
+    globalThis as typeof globalThis & { BarcodeDetector?: ConstrutorBarcodeDetector }
+  ).BarcodeDetector;
+  if (!construtor || typeof createImageBitmap !== "function") return false;
+
+  let bitmap: ImageBitmap | undefined;
+  try {
+    bitmap = await createImageBitmap(file);
+    return (await new construtor().detect(bitmap)).length > 0;
+  } catch (error) {
+    console.error("Não foi possível verificar se a imagem contém código de barras.", error);
+    throw error;
+  } finally {
+    bitmap?.close();
+  }
+}
+
+/** Impede que imagens com código de barras sejam usadas para extrair dados da OS. */
+export async function lerImagemParaOS(
+  file: File,
+  onProgress: (pct: number) => void,
+): Promise<string | null> {
+  if (await imagemContemCodigoDeBarras(file)) return null;
+
+  const texto = await lerImagem(file, onProgress);
+  return textoIndicaCodigoDeBarras(texto) ? null : texto;
 }

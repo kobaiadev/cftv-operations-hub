@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useRef, useState, type ChangeEvent } from "react";
+import { Fragment, useMemo, useRef, useState, type ChangeEvent } from "react";
 import {
   ClipboardList,
   Download,
@@ -44,7 +44,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useOS, nowBR, type OS, type OSStatus, type Severity } from "@/lib/os-store";
 import { useCadastro } from "@/lib/cadastro-store";
-import { interpretarBO, interpretarTexto, lerImagem } from "@/lib/ocr";
+import { interpretarBO, interpretarTexto, lerImagemParaOS } from "@/lib/ocr";
 import { obterClienteSupabase } from "@/lib/supabase";
 import { baixarPdfOS } from "@/lib/os-pdf";
 import {
@@ -146,6 +146,11 @@ function OrdensPage() {
   const [salvandoEdicao, setSalvandoEdicao] = useState(false);
   const [excluindoOS, setExcluindoOS] = useState<string | null>(null);
   const [baixandoPdf, setBaixandoPdf] = useState<string | null>(null);
+  const [anexosPorOS, setAnexosPorOS] = useState<Record<string, Anexo[]>>({});
+  const [ordensComAnexosAbertos, setOrdensComAnexosAbertos] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const [carregandoAnexosOS, setCarregandoAnexosOS] = useState<string | null>(null);
   const [rotuloNovoAnexo, setRotuloNovoAnexo] = useState("Documento adicional");
   const [filtroLoja, setFiltroLoja] = useState("todas");
   const [filtroData, setFiltroData] = useState("");
@@ -214,25 +219,30 @@ function OrdensPage() {
 
   // ---- Textos lidos usados para complementar os campos do BO ----
   const textosOcr = useRef<Record<string, string>>({});
-  const atualizarDadosBO = (rotulo: string, texto: string) => {
-    textosOcr.current[rotulo] = texto;
+  const fontesComplementaresOcr = [
+    "Print da ocorrência",
+    "Reserva de imagem (CFTV)",
+    "Requisição de Imagens (POLICIAL)",
+    "Documento adicional 1",
+    "Documento adicional 2",
+    "Documento adicional 3",
+    "Documento adicional 4",
+  ];
+  const recalcularDadosBO = () => {
     const resultado = interpretarBO(
       textosOcr.current["Boletim de Ocorrência"] ?? "",
-      [
-        "Print da ocorrência",
-        "Reserva de imagem (CFTV)",
-        "Documento adicional 1",
-        "Documento adicional 2",
-        "Documento adicional 3",
-        "Documento adicional 4",
-      ].map((fonte) => textosOcr.current[fonte] ?? ""),
+      fontesComplementaresOcr.map((fonte) => textosOcr.current[fonte] ?? ""),
     );
-    setBo((anterior) => ({
-      numero: resultado.numero || anterior.numero,
-      delegacia: resultado.delegacia || anterior.delegacia,
-      data: resultado.data || anterior.data,
-    }));
+    setBo(resultado);
     return resultado;
+  };
+  const removerTextoOcr = (rotulo: string) => {
+    delete textosOcr.current[rotulo];
+    recalcularDadosBO();
+  };
+  const atualizarDadosBO = (rotulo: string, texto: string) => {
+    textosOcr.current[rotulo] = texto;
+    return recalcularDadosBO();
   };
   const completarDadosDaDescricao = (descricao: string) => {
     const resultado = interpretarTexto(
@@ -257,13 +267,18 @@ function OrdensPage() {
   const [extras, setExtras] = useState(extraVazio);
   const escolherExtra = async (i: number, f: File | undefined) => {
     if (!f) return;
+    removerTextoOcr(`Documento adicional ${i + 1}`);
     const url = URL.createObjectURL(f);
     setExtras((p) =>
       p.map((x, j) => (j === i ? { file: f, url, lendo: f.type.startsWith("image/") } : x)),
     );
     if (!f.type.startsWith("image/")) return;
     try {
-      const texto = await lerImagem(f, () => {});
+      const texto = await lerImagemParaOS(f, () => {});
+      if (texto === null) {
+        toast.info("Imagem com código de barras ignorada; nenhum dado foi extraído para a OS.");
+        return;
+      }
       atualizarDadosBO(`Documento adicional ${i + 1}`, texto);
       const o = interpretarTexto(texto, nomesLojas);
       setForm((prev) => ({
@@ -284,6 +299,7 @@ function OrdensPage() {
 
   const escolherPrint = (f: File | undefined) => {
     if (!f) return;
+    removerTextoOcr("Print da ocorrência");
     setPrintFile(f);
     setPrintUrl(URL.createObjectURL(f));
     setOsGerada(null);
@@ -295,7 +311,11 @@ function OrdensPage() {
     setLendo(true);
     setProgresso(0);
     try {
-      const texto = await lerImagem(file, setProgresso);
+      const texto = await lerImagemParaOS(file, setProgresso);
+      if (texto === null) {
+        toast.info("Imagem com código de barras ignorada; nenhum dado foi extraído para a OS.");
+        return;
+      }
       atualizarDadosBO("Print da ocorrência", texto);
       const r = interpretarTexto(texto, nomesLojas);
       setForm((prev) => ({
@@ -317,8 +337,10 @@ function OrdensPage() {
 
   const escolherReserva = (f: File | undefined) => {
     if (!f) return;
+    removerTextoOcr("Reserva de imagem (CFTV)");
     setResFile(f);
     setResUrl(URL.createObjectURL(f));
+    setResNumero("");
     void lerReserva(f);
   };
 
@@ -326,7 +348,11 @@ function OrdensPage() {
     if (!file) return;
     setLendoRes(true);
     try {
-      const texto = await lerImagem(file, () => {});
+      const texto = await lerImagemParaOS(file, () => {});
+      if (texto === null) {
+        toast.info("Imagem com código de barras ignorada; nenhum dado foi extraído para a OS.");
+        return;
+      }
       atualizarDadosBO("Reserva de imagem (CFTV)", texto);
       const r = interpretarTexto(texto, nomesLojas);
       if (r.reservaNumero) {
@@ -344,6 +370,7 @@ function OrdensPage() {
 
   const escolherBo = (f: File | undefined) => {
     if (!f) return;
+    removerTextoOcr("Boletim de Ocorrência");
     setBoFile(f);
     setBoUrl(URL.createObjectURL(f));
     void lerBo(f);
@@ -353,7 +380,11 @@ function OrdensPage() {
     if (!file) return;
     setLendoBo(true);
     try {
-      const texto = await lerImagem(file, () => {});
+      const texto = await lerImagemParaOS(file, () => {});
+      if (texto === null) {
+        toast.info("Imagem com código de barras ignorada; nenhum dado foi extraído para a OS.");
+        return;
+      }
       const r = atualizarDadosBO("Boletim de Ocorrência", texto);
       const o = interpretarTexto(texto, nomesLojas);
       // complementa dados da OS que ainda estiverem vazios
@@ -378,7 +409,11 @@ function OrdensPage() {
     if (!file.type.startsWith("image/")) return;
     setLendoRequisicao(true);
     try {
-      const texto = await lerImagem(file, () => {});
+      const texto = await lerImagemParaOS(file, () => {});
+      if (texto === null) {
+        toast.info("Imagem com código de barras ignorada; nenhum dado foi extraído para a OS.");
+        return;
+      }
       atualizarDadosBO("Requisição de Imagens (POLICIAL)", texto);
       toast.success("Requisição policial lida.");
     } catch {
@@ -559,6 +594,55 @@ function OrdensPage() {
     }
   };
 
+  const alternarAnexos = async (os: OS) => {
+    if (ordensComAnexosAbertos.has(os.id)) {
+      setOrdensComAnexosAbertos((atuais) => {
+        const proximas = new Set(atuais);
+        proximas.delete(os.id);
+        return proximas;
+      });
+      return;
+    }
+
+    let anexos = anexosPorOS[os.id];
+    if (!anexos) {
+      setCarregandoAnexosOS(os.id);
+      try {
+        const carregados = await lerAnexos(os.id);
+        anexos = carregados;
+        setAnexosPorOS((atuais) => ({ ...atuais, [os.id]: carregados }));
+      } catch (error) {
+        console.error(`Não foi possível carregar os anexos da ${os.id}.`, error);
+        toast.error(`Não foi possível carregar os anexos da ${os.id}.`);
+        return;
+      } finally {
+        setCarregandoAnexosOS(null);
+      }
+    }
+
+    if (anexos.length === 0) {
+      toast.info(`A ${os.id} não possui anexos disponíveis para download.`);
+      return;
+    }
+
+    setOrdensComAnexosAbertos((atuais) => new Set(atuais).add(os.id));
+  };
+
+  const baixarAnexo = (osId: string, anexo: Anexo) => {
+    try {
+      const link = document.createElement("a");
+      link.href = anexo.dataUrl;
+      link.download = anexo.nome || `${anexo.rotulo}.bin`;
+      link.rel = "noopener";
+      document.body.append(link);
+      link.click();
+      link.remove();
+    } catch (error) {
+      console.error(`Não foi possível baixar "${anexo.nome}" da ${osId}.`, error);
+      toast.error(`Não foi possível baixar o arquivo "${anexo.nome}".`);
+    }
+  };
+
   const adicionarAnexos = async (event: ChangeEvent<HTMLInputElement>) => {
     const arquivos = Array.from(event.target.files ?? []);
     event.target.value = "";
@@ -652,6 +736,7 @@ function OrdensPage() {
         anexosNomes: anexosEditando.map((anexo) => anexo.nome),
       };
       await salvarAnexos(editando.id, anexosEditando);
+      setAnexosPorOS((atuais) => ({ ...atuais, [editando.id]: [...anexosEditando] }));
       updateOS(editando.id, atualizada);
       toast.success(`${editando.id} atualizada com sucesso.`);
       setEditando(null);
@@ -676,6 +761,16 @@ function OrdensPage() {
     try {
       await removerAnexos(os.id);
       removeOS(os.id);
+      setAnexosPorOS((atuais) => {
+        const proximos = { ...atuais };
+        delete proximos[os.id];
+        return proximos;
+      });
+      setOrdensComAnexosAbertos((atuais) => {
+        const proximas = new Set(atuais);
+        proximas.delete(os.id);
+        return proximas;
+      });
       if (editando?.id === os.id) setEditando(null);
       toast.success(`${os.id} e seus anexos foram excluídos.`);
     } catch (error) {
@@ -914,6 +1009,7 @@ function OrdensPage() {
               onChange={(event) => {
                 const arquivo = event.target.files?.[0];
                 if (!arquivo) return;
+                removerTextoOcr("Requisição de Imagens (POLICIAL)");
                 setRequisicaoFile(arquivo);
                 if (requisicaoUrl) URL.revokeObjectURL(requisicaoUrl);
                 setRequisicaoUrl(
@@ -1189,102 +1285,150 @@ function OrdensPage() {
               </TableRow>
             )}
             {ordensVisiveis.map((o) => (
-              <TableRow key={o.id}>
-                <TableCell className="pl-5 font-mono text-primary">{o.id}</TableCell>
-                <TableCell className="whitespace-nowrap font-mono text-xs text-muted-foreground">
-                  {o.data}
-                </TableCell>
-                <TableCell className="whitespace-nowrap">{o.loja}</TableCell>
-                <TableCell className="hidden text-muted-foreground lg:table-cell">
-                  {o.setor}
-                </TableCell>
-                <TableCell
-                  className="hidden text-muted-foreground md:table-cell"
-                  title={o.descricao}
-                >
-                  {o.ocorrencia}
-                </TableCell>
-                <TableCell>
-                  <span
-                    className={cn(
-                      "inline-flex rounded-md border px-2 py-0.5 text-xs font-medium",
-                      sevCls[o.gravidade],
+              <Fragment key={o.id}>
+                <TableRow>
+                  <TableCell className="pl-5 font-mono text-primary">{o.id}</TableCell>
+                  <TableCell className="whitespace-nowrap font-mono text-xs text-muted-foreground">
+                    {o.data}
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap">{o.loja}</TableCell>
+                  <TableCell className="hidden text-muted-foreground lg:table-cell">
+                    {o.setor}
+                  </TableCell>
+                  <TableCell
+                    className="hidden text-muted-foreground md:table-cell"
+                    title={o.descricao}
+                  >
+                    {o.ocorrencia}
+                  </TableCell>
+                  <TableCell>
+                    <span
+                      className={cn(
+                        "inline-flex rounded-md border px-2 py-0.5 text-xs font-medium",
+                        sevCls[o.gravidade],
+                      )}
+                    >
+                      {o.gravidade}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    {o.reserva ? (
+                      <span
+                        className="inline-flex items-center gap-1.5 rounded-md border border-info/30 bg-info/10 px-2 py-0.5 font-mono text-xs text-info"
+                        title={`Print: ${o.reserva.imagemNome} — vinculada em ${o.reserva.vinculadaEm}`}
+                      >
+                        <Link2 className="size-3" /> {o.reserva.numero}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">—</span>
                     )}
-                  >
-                    {o.gravidade}
-                  </span>
-                </TableCell>
-                <TableCell>
-                  {o.reserva ? (
-                    <span
-                      className="inline-flex items-center gap-1.5 rounded-md border border-info/30 bg-info/10 px-2 py-0.5 font-mono text-xs text-info"
-                      title={`Print: ${o.reserva.imagemNome} — vinculada em ${o.reserva.vinculadaEm}`}
-                    >
-                      <Link2 className="size-3" /> {o.reserva.numero}
+                  </TableCell>
+                  <TableCell>
+                    {o.bo ? (
+                      <span
+                        className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted px-2 py-0.5 font-mono text-xs"
+                        title={`${o.bo.delegacia || "Delegacia não informada"} — ${o.bo.data || "sem data"}`}
+                      >
+                        <FileText className="size-3" /> {o.bo.numero}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <span className="inline-flex items-center gap-2 whitespace-nowrap text-sm">
+                      <span
+                        className={cn("size-2 rounded-full", {
+                          "bg-warning": o.status === "Aguardando Imagens",
+                          "bg-info": o.status === "Em Análise",
+                          "bg-success": o.status === "Concluída",
+                        })}
+                      />
+                      {o.status}
                     </span>
-                  ) : (
-                    <span className="text-xs text-muted-foreground">—</span>
-                  )}
-                </TableCell>
-                <TableCell>
-                  {o.bo ? (
-                    <span
-                      className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted px-2 py-0.5 font-mono text-xs"
-                      title={`${o.bo.delegacia || "Delegacia não informada"} — ${o.bo.data || "sem data"}`}
+                  </TableCell>
+                  <TableCell className="pr-5 text-right">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      disabled={carregandoAnexosOS !== null}
+                      onClick={() => void alternarAnexos(o)}
+                      aria-label={`${ordensComAnexosAbertos.has(o.id) ? "Ocultar" : "Exibir"} anexos da ${o.id}`}
+                      title="Exibir ou baixar anexos individualmente"
                     >
-                      <FileText className="size-3" /> {o.bo.numero}
-                    </span>
-                  ) : (
-                    <span className="text-xs text-muted-foreground">—</span>
-                  )}
-                </TableCell>
-                <TableCell>
-                  <span className="inline-flex items-center gap-2 whitespace-nowrap text-sm">
-                    <span
-                      className={cn("size-2 rounded-full", {
-                        "bg-warning": o.status === "Aguardando Imagens",
-                        "bg-info": o.status === "Em Análise",
-                        "bg-success": o.status === "Concluída",
-                      })}
-                    />
-                    {o.status}
-                  </span>
-                </TableCell>
-                <TableCell className="pr-5 text-right">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    disabled={baixandoPdf !== null}
-                    onClick={() => void baixarPdf(o)}
-                    aria-label={`Baixar PDF da ocorrência ${o.id}`}
-                    title={`Baixar PDF da ocorrência ${o.id}`}
-                  >
-                    {baixandoPdf === o.id ? <Loader2 className="animate-spin" /> : <Download />}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => void abrirEdicao(o)}
-                    aria-label={`Editar ${o.id}`}
-                  >
-                    <Pencil /> Editar
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                    disabled={excluindoOS === o.id}
-                    onClick={() => void excluirOrdem(o)}
-                    aria-label={`Excluir ${o.id}`}
-                    title={`Excluir ${o.id}`}
-                  >
-                    {excluindoOS === o.id ? <Loader2 className="animate-spin" /> : <Trash2 />}
-                  </Button>
-                </TableCell>
-              </TableRow>
+                      {carregandoAnexosOS === o.id ? (
+                        <Loader2 className="animate-spin" />
+                      ) : (
+                        <Paperclip />
+                      )}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      disabled={baixandoPdf !== null}
+                      onClick={() => void baixarPdf(o)}
+                      aria-label={`Baixar PDF da ocorrência ${o.id}`}
+                      title={`Baixar PDF da ocorrência ${o.id}`}
+                    >
+                      {baixandoPdf === o.id ? <Loader2 className="animate-spin" /> : <Download />}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => void abrirEdicao(o)}
+                      aria-label={`Editar ${o.id}`}
+                    >
+                      <Pencil /> Editar
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                      disabled={excluindoOS === o.id}
+                      onClick={() => void excluirOrdem(o)}
+                      aria-label={`Excluir ${o.id}`}
+                      title={`Excluir ${o.id}`}
+                    >
+                      {excluindoOS === o.id ? <Loader2 className="animate-spin" /> : <Trash2 />}
+                    </Button>
+                  </TableCell>
+                </TableRow>
+                {ordensComAnexosAbertos.has(o.id) && (
+                  <TableRow>
+                    <TableCell colSpan={10} className="bg-muted/20 px-5 py-4">
+                      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                        {(anexosPorOS[o.id] ?? []).map((anexo, indice) => (
+                          <div
+                            key={`${anexo.nome}-${indice}`}
+                            className="flex min-w-0 flex-col gap-2 rounded-md border border-border bg-card p-3"
+                          >
+                            <p className="text-xs font-semibold text-foreground">{anexo.rotulo}</p>
+                            <p
+                              className="truncate text-xs text-muted-foreground"
+                              title={anexo.nome}
+                            >
+                              {anexo.nome}
+                            </p>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="mt-auto w-full"
+                              onClick={() => baixarAnexo(o.id, anexo)}
+                            >
+                              <Download /> Baixar arquivo
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )}
+              </Fragment>
             ))}
           </TableBody>
         </Table>

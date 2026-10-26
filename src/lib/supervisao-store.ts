@@ -56,7 +56,6 @@ export function useSupervisoes() {
     (listener) => {
       carregar();
       listeners.add(listener);
-      listener();
       return () => listeners.delete(listener);
     },
     () => supervisoes,

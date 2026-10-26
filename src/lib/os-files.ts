@@ -6,9 +6,13 @@ export type Anexo = { rotulo: string; nome: string; tipo: string; dataUrl: strin
 const DB = "pp-os-arquivos";
 const STORE = "anexos";
 const STORE_SUPERVISOES = "fotos-supervisao";
+let bancoPromise: Promise<IDBDatabase> | undefined;
 
 function abrir(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
+  if (bancoPromise) return bancoPromise;
+
+  bancoPromise = new Promise((resolve, reject) => {
+    let bloqueado = false;
     const req = indexedDB.open(DB, 2);
     req.onupgradeneeded = () => {
       if (!req.result.objectStoreNames.contains(STORE)) req.result.createObjectStore(STORE);
@@ -16,9 +20,30 @@ function abrir(): Promise<IDBDatabase> {
         req.result.createObjectStore(STORE_SUPERVISOES);
       }
     };
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
+    req.onsuccess = () => {
+      const banco = req.result;
+      if (bloqueado) {
+        banco.close();
+        return;
+      }
+      banco.onversionchange = () => {
+        banco.close();
+        bancoPromise = undefined;
+      };
+      resolve(banco);
+    };
+    req.onerror = () => {
+      bancoPromise = undefined;
+      reject(req.error ?? new Error("Não foi possível abrir o armazenamento de arquivos."));
+    };
+    req.onblocked = () => {
+      bloqueado = true;
+      bancoPromise = undefined;
+      reject(new Error("O armazenamento de arquivos está bloqueado por outra aba."));
+    };
   });
+
+  return bancoPromise;
 }
 
 export async function salvarAnexos(osId: string, anexos: Anexo[]) {

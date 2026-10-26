@@ -120,7 +120,6 @@ export function useCadastro() {
     (l) => {
       load();
       listeners.add(l);
-      l();
       return () => listeners.delete(l);
     },
     () => state,

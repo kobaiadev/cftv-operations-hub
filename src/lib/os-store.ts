@@ -55,13 +55,13 @@ function load() {
   try {
     const raw = localStorage.getItem(KEY);
     if (raw) state = JSON.parse(raw);
-  } catch {
-    /* ignore */
+  } catch (error) {
+    console.error("Não foi possível carregar as ordens de serviço salvas.", error);
   }
 }
 function set(next: State) {
+  localStorage.setItem(KEY, JSON.stringify(next));
   state = next;
-  localStorage.setItem(KEY, JSON.stringify(state));
   listeners.forEach((l) => l());
 }
 
@@ -88,7 +88,6 @@ export function useOS() {
     (l) => {
       load();
       listeners.add(l);
-      l();
       return () => listeners.delete(l);
     },
     () => state,

@@ -45,8 +45,8 @@ import { cn } from "@/lib/utils";
 import { useOS, nowBR, type OS, type OSStatus, type Severity } from "@/lib/os-store";
 import { useCadastro } from "@/lib/cadastro-store";
 import { interpretarBO, interpretarTexto, lerImagemParaOS } from "@/lib/ocr";
-import { obterClienteSupabase } from "@/lib/supabase";
 import { baixarPdfOS } from "@/lib/os-pdf";
+import { salvarWorkOrder } from "@/lib/work-orders-api";
 import {
   arquivoParaDataUrl,
   lerAnexos,
@@ -495,15 +495,12 @@ function OrdensPage() {
 
       let erroSupabase: unknown;
       try {
-        const { error } = await obterClienteSupabase()
-          .from("work_orders")
-          .insert({
-            store_name: loja,
-            event_date: normalizarDataSupabase(data),
-            occurrence_type: ocorrencia,
-            description: descricao,
-          });
-        if (error) throw error;
+        await salvarWorkOrder({
+          store_name: loja,
+          event_date: normalizarDataSupabase(data),
+          occurrence_type: ocorrencia,
+          description: descricao,
+        });
       } catch (error) {
         erroSupabase = error;
         console.error(

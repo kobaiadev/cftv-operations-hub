@@ -53,6 +53,17 @@ const formatarDataHora = (valor: string | Date) =>
     timeStyle: "short",
   });
 
+function RelogioAtual() {
+  const [agora, setAgora] = useState(() => new Date());
+
+  useEffect(() => {
+    const intervalo = window.setInterval(() => setAgora(new Date()), 15000);
+    return () => window.clearInterval(intervalo);
+  }, []);
+
+  return <>{formatarDataHora(agora)}</>;
+}
+
 function SupervisaoPage() {
   const { supervisoes, addSupervisao, removeSupervisao } = useSupervisoes();
   const { empresas, supervisores } = useCadastro();
@@ -64,7 +75,6 @@ function SupervisaoPage() {
   const [fotos, setFotos] = useState<(Captura | null)[]>([null, null]);
   const [processando, setProcessando] = useState<boolean[]>([false, false]);
   const [salvando, setSalvando] = useState(false);
-  const [agora, setAgora] = useState(() => new Date());
   const fotosAtuaisRef = useRef(fotos);
   fotosAtuaisRef.current = fotos;
   const supervisoresDisponiveis = supervisores.filter(
@@ -72,11 +82,6 @@ function SupervisaoPage() {
       supervisor.tipo === tipo &&
       (tipo === "NAGUMO" || (tipo === "EXTERNO" && supervisor.empresaId === empresaId)),
   );
-
-  useEffect(() => {
-    const intervalo = window.setInterval(() => setAgora(new Date()), 15000);
-    return () => window.clearInterval(intervalo);
-  }, []);
 
   useEffect(
     () => () =>
@@ -170,7 +175,6 @@ function SupervisaoPage() {
       setSupervisorId("");
       setObservacoes("");
       setFotos([null, null]);
-      setAgora(new Date());
       toast.success("Registro de supervisão salvo.");
     } catch (error) {
       try {
@@ -310,7 +314,7 @@ function SupervisaoPage() {
             <p className="text-xs font-medium text-muted-foreground">Data e hora do registro</p>
             <div className="flex h-10 items-center gap-2 rounded-md border border-input bg-muted/40 px-3 text-sm">
               <Clock3 className="size-4 text-muted-foreground" />
-              {formatarDataHora(agora)}
+              <RelogioAtual />
             </div>
           </div>
           <div className="space-y-1.5 md:col-span-2">

@@ -225,7 +225,7 @@ function SupervisaoPage() {
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-muted-foreground">Vínculo</label>
             <Select
-              value={tipo || undefined}
+              value={tipo}
               onValueChange={(valor) => {
                 if (valor === "NAGUMO" || valor === "EXTERNO") {
                   setTipo(valor);
@@ -247,7 +247,7 @@ function SupervisaoPage() {
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-muted-foreground">Empresa</label>
             <Select
-              value={tipo === "NAGUMO" ? "NAGUMO" : empresaId || undefined}
+              value={tipo === "NAGUMO" ? "NAGUMO" : empresaId}
               onValueChange={(valor) => {
                 setEmpresaId(valor);
                 setSupervisorId("");
@@ -284,7 +284,7 @@ function SupervisaoPage() {
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-muted-foreground">Nome do supervisor</label>
             <Select
-              value={supervisorId || undefined}
+              value={supervisorId}
               onValueChange={(id) => {
                 setSupervisorId(id);
                 setNome(

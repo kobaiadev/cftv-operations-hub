@@ -5,7 +5,6 @@ import {
   criarTemplateOS,
   normalizarTextoRelatorio,
   tituloFormalAnexo,
-  NAVY,
   GRAY,
 } from "@/lib/os-pdf-template";
 export { normalizarTextoRelatorio } from "@/lib/os-pdf-template";
@@ -261,7 +260,7 @@ export async function baixarPdfOS(os: OS) {
   const relatoConsolidado = os.descricao.trim();
 
   const template = await criarTemplateOS(doc, os.id, "RELATÓRIO CONSOLIDADO DE OCORRÊNCIA");
-  const { secao, linhas, linhasGrade, paragrafo, garantir, W, M, rodape } = template;
+  const { secao, linhas, linhasGrade, paragrafo, rodape } = template;
   template.identificacao(os.gravidade, SEV[os.gravidade] ?? GRAY);
 
   secao("1. Dados gerais da ocorrência");
@@ -380,24 +379,7 @@ export async function baixarPdfOS(os: OS) {
   }
 
   // Assinaturas
-  garantir(34);
-  template.avancar(3);
-  const y = template.getY();
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(9);
-  doc.setTextColor(...NAVY);
-  doc.text("Daniel da Silva Lima", M + 39, y + 4, { align: "center" });
-  doc.text("Donizete Campos", W - M - 39, y + 4, { align: "center" });
-  doc.setDrawColor(...GRAY);
-  doc.setLineWidth(0.3);
-  doc.line(M, y + 7, M + 78, y + 7);
-  doc.line(W - M - 78, y + 7, W - M, y + 7);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(8);
-  doc.setTextColor(...GRAY);
-  doc.text("Analista Supervisor de Segurança", M + 39, y + 12, { align: "center" });
-  doc.text("Diretoria / Gerência responsável", W - M - 39, y + 12, { align: "center" });
-  template.avancar(20);
+  template.assinaturas();
 
   // Prints e anexos
   if (anexos.length) {
@@ -441,6 +423,7 @@ export async function baixarPdfReparo(
   template.paragrafo(sr.descricao || "Descrição não informada.", false, 3);
   template.secao("4. PRINTS E DOCUMENTOS VINCULADOS");
   await template.renderizarAnexos(imagens);
+  template.assinaturas();
   template.rodape();
   doc.save(`${sr.id}.pdf`);
 }

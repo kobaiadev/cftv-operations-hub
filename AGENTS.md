@@ -15,4 +15,4 @@
 - Cloud access assignments use `user_roles.user_id`, `display_name`, `email`, and `role`; preserve the existing access-level meanings.
 - Preserve authentication context identity through Vite hot data during Fast Refresh so mounted providers and updated consumers cannot diverge.
 - Repair requests live in `repair_requests` + private `repair-images` bucket; the page reuses OS form parts (src/components/os-form-parts.tsx) and the OS PDF template (baixarPdfReparo) — why: one shared look and OCR flow.
-- OS and repair exports share the rendering primitives in `os-pdf-template.ts`; report-specific generators only map their fields — why: grids, typography, page breaks and attachment frames must not diverge.
+- OS and repair exports share the rendering primitives, including signatures, in `os-pdf-template.ts`; report-specific generators only map their fields and block order — why: grids, typography, page breaks, signature spacing and attachment frames must not diverge.

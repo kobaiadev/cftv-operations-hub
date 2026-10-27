@@ -390,7 +390,27 @@ export async function criarTemplateOS(doc: jsPDF, id: string, titulo: string) {
       y += 10;
     }
   };
+  const assinaturas = () => {
+    garantir(34);
+    y += 3;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.setTextColor(...NAVY);
+    doc.text("Daniel da Silva Lima", M + 39, y + 4, { align: "center" });
+    doc.text("Donizete Campos", W - M - 39, y + 4, { align: "center" });
+    doc.setDrawColor(...GRAY);
+    doc.setLineWidth(0.3);
+    doc.line(M, y + 7, M + 78, y + 7);
+    doc.line(W - M - 78, y + 7, W - M, y + 7);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(...GRAY);
+    doc.text("Analista Supervisor de Segurança", M + 39, y + 12, { align: "center" });
+    doc.text("Diretoria / Gerência responsável", W - M - 39, y + 12, { align: "center" });
+    y += 20;
+  };
   return {
+    assinaturas,
     secao,
     linhas,
     linhasGrade,

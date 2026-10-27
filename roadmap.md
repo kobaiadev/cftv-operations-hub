@@ -1,4 +1,5 @@
 # Login repair
+- [ ] Incluir as assinaturas compartilhadas da OS ao final do PDF de reparos e verificar o download.
 - [x] Padronizar o PDF de reparos reutilizando o template de OS; download real, acentos e imagens enquadradas verificados.
 - [x] Verify the authentication context survives live preview updates without blanking login.
 - [x] Remove incomplete public signup and password-recovery pages.

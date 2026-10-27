@@ -1,4 +1,4 @@
-import { createFileRoute, Navigate } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { LoaderCircle, ShieldPlus, Trash2, UsersRound } from "lucide-react";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { useServerFn } from "@tanstack/react-start";
@@ -101,7 +101,19 @@ function UsuariosPage() {
   }, [profile?.role, carregarUsuarios]);
 
   if (loading) return null;
-  if (!ehAdministrador(profile?.role)) return <Navigate to="/" replace />;
+  if (!ehAdministrador(profile?.role)) {
+    return (
+      <div className="mx-auto max-w-md rounded-xl border border-border bg-card p-6 text-center shadow-card">
+        <h1 className="text-lg font-semibold">Acesso restrito</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Apenas administradores (Nível 00) podem gerenciar usuários.
+        </p>
+        <Button asChild className="mt-5">
+          <Link to="/">Voltar ao painel</Link>
+        </Button>
+      </div>
+    );
+  }
 
   const criarUsuario = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();

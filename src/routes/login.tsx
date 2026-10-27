@@ -1,155 +1,93 @@
-import { createFileRoute, Navigate } from "@tanstack/react-router";
-import { Eye, EyeOff, LoaderCircle, LockKeyhole, Mail, ShieldCheck } from "lucide-react";
+import { createFileRoute, Navigate, useNavigate } from "@tanstack/react-router";
+import { Eye, EyeOff, LoaderCircle, LockKeyhole, Mail } from "lucide-react";
 import { useState, type FormEvent } from "react";
-import logoUrl from "@/assets/logo-nagumo.png";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/lib/auth";
-import { obterClienteSupabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/login")({
-  head: () => ({ meta: [{ title: "Entrar — Segurança Patrimonial Nagumo" }] }),
+  head: () => ({ meta: [
+    { title: "Entrar — Segurança Patrimonial Nagumo" },
+    { name: "description", content: "Acesso restrito ao controle de ordens de serviço e reservas CFTV Nagumo." },
+    { property: "og:title", content: "Entrar — Segurança Patrimonial Nagumo" },
+    { property: "og:description", content: "Acesso restrito ao controle de ordens de serviço e reservas CFTV Nagumo." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary" },
+  ] }),
   component: LoginPage,
 });
 
 function LoginPage() {
-  const { session, profile, loading, error: authError } = useAuth();
+  const navigate = useNavigate();
+  const { session, loading, error: authError } = useAuth();
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [mostrarSenha, setMostrarSenha] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
-  if (session && profile) return <Navigate to="/" replace />;
+  if (session && !loading) return <Navigate to="/" replace />;
 
-  const entrar = async (event: FormEvent<HTMLFormElement>) => {
+  async function entrar(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (enviando || loading) return;
     setErro(null);
     setEnviando(true);
     try {
-      const { error: loginError } = await obterClienteSupabase().auth.signInWithPassword({
-        email: email.trim().toLowerCase(),
-        password: senha,
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email.trim().toLowerCase(), password: senha,
       });
-      if (loginError) throw new Error("E-mail ou senha inválidos.");
-    } catch (cause) {
-      console.error("Falha na autenticação do usuário.", cause);
-      setErro(cause instanceof Error ? cause.message : "Não foi possível iniciar a sessão.");
+      if (error) {
+        setErro(error.code === "invalid_credentials" ? "E-mail ou senha inválidos."
+          : error.code === "email_not_confirmed" ? "Confirme seu e-mail antes de entrar."
+          : error.status === 429 ? "Muitas tentativas. Aguarde alguns minutos e tente novamente."
+          : "Não foi possível entrar. Tente novamente ou contate o administrador.");
+        return;
+      }
+      if (!data.session) { setErro("Não foi possível iniciar a sessão. Tente novamente."); return; }
+      setSenha("");
+      await navigate({ to: "/", replace: true });
+    } catch {
+      setErro("Não foi possível conectar. Verifique sua conexão e tente novamente.");
     } finally {
       setEnviando(false);
     }
-  };
+  }
 
-  return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#17365d] px-4 py-10 text-slate-900">
-      <div className="pointer-events-none absolute -left-36 -top-40 size-[26rem] rounded-full border border-[#6dc7d4]/20" />
-      <div className="pointer-events-none absolute -bottom-48 -right-36 size-[32rem] rounded-full border border-[#6dc7d4]/20" />
-      <div className="relative grid w-full max-w-5xl overflow-hidden rounded-2xl bg-white shadow-2xl shadow-black/30 md:grid-cols-[1.05fr_0.95fr]">
-        <section className="relative hidden min-h-[34rem] flex-col justify-between overflow-hidden bg-[#17365d] p-10 text-white md:flex">
-          <div className="absolute inset-x-0 bottom-0 h-2 bg-[#6dc7d4]" />
-          <img src={logoUrl} alt="Nagumo" className="h-auto w-56 rounded-md" />
-          <div className="relative max-w-md">
-            <div className="mb-5 flex size-12 items-center justify-center rounded-xl border border-[#6dc7d4]/40 bg-white/5 text-[#6dc7d4]">
-              <ShieldCheck className="size-6" />
-            </div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#6dc7d4]">
-              Segurança patrimonial
-            </p>
-            <h1 className="mt-3 text-3xl font-semibold leading-tight">
-              Operação protegida, informação confiável.
-            </h1>
-            <p className="mt-4 text-sm leading-6 text-blue-100/80">
-              Acesse ordens de serviço, reservas CFTV, supervisões e indicadores em um só lugar.
-            </p>
-          </div>
-          <p className="text-xs text-blue-100/60">Ambiente restrito a usuários autorizados.</p>
-        </section>
-
-        <section className="flex min-h-[34rem] flex-col justify-center px-6 py-10 sm:px-10 lg:px-14">
-          <img src={logoUrl} alt="Nagumo" className="mb-8 h-auto w-44 md:hidden" />
-          <div className="mb-8">
-            <div className="mb-3 flex size-11 items-center justify-center rounded-xl bg-[#c9273d]/10 text-[#c9273d]">
-              <LockKeyhole className="size-5" />
-            </div>
-            <h2 className="text-2xl font-semibold tracking-tight text-[#17365d]">
-              Acessar sistema
-            </h2>
-            <p className="mt-2 text-sm text-slate-600">Entre com seu e-mail corporativo e senha.</p>
-          </div>
-
-          <form className="space-y-5" onSubmit={entrar}>
-            <div className="space-y-2">
-              <label htmlFor="login-email" className="text-sm font-medium text-slate-700">
-                E-mail
-              </label>
-              <div className="relative">
-                <Mail className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-                <Input
-                  id="login-email"
-                  type="email"
-                  autoComplete="username"
-                  required
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                  placeholder="nome@nagumo.com.br"
-                  className="h-11 border-slate-300 bg-white pl-10 text-slate-900 placeholder:text-slate-400 focus-visible:ring-[#6dc7d4]"
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <label htmlFor="login-senha" className="text-sm font-medium text-slate-700">
-                Senha
-              </label>
-              <div className="relative">
-                <LockKeyhole className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-                <Input
-                  id="login-senha"
-                  type={mostrarSenha ? "text" : "password"}
-                  autoComplete="current-password"
-                  required
-                  value={senha}
-                  onChange={(event) => setSenha(event.target.value)}
-                  placeholder="Sua senha"
-                  className="h-11 border-slate-300 bg-white pl-10 pr-11 text-slate-900 placeholder:text-slate-400 focus-visible:ring-[#6dc7d4]"
-                />
-                <button
-                  type="button"
-                  aria-label={mostrarSenha ? "Ocultar senha" : "Mostrar senha"}
-                  onClick={() => setMostrarSenha(!mostrarSenha)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-[#17365d]"
-                >
-                  {mostrarSenha ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-                </button>
-              </div>
-            </div>
-
-            {(erro || authError) && (
-              <p
-                role="alert"
-                className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
-              >
-                {erro ?? authError}
-              </p>
-            )}
-
-            <Button
-              type="submit"
-              disabled={enviando || loading}
-              className="h-11 w-full bg-[#c9273d] text-white hover:bg-[#ae1f33]"
-            >
-              {enviando || loading ? (
-                <LoaderCircle className="animate-spin" />
-              ) : (
-                "Entrar com segurança"
-              )}
-            </Button>
-          </form>
-
-          <p className="mt-8 border-t border-[#6dc7d4]/40 pt-5 text-center text-xs text-slate-500">
-            Segurança Patrimonial · Controle de OS e Reservas CFTV
-          </p>
-        </section>
+  return <main className="login-theme flex min-h-screen items-center justify-center bg-login-background px-4 py-10 text-login-foreground">
+    <section aria-labelledby="login-title" className="w-full max-w-md rounded-lg border border-login-border bg-login-card px-6 py-9 shadow-card sm:px-9">
+      <div aria-label="Nagumo" className="mb-9 flex items-center justify-center gap-3">
+        <span aria-hidden="true" className="flex size-12 shrink-0 items-center justify-center rounded-full bg-login-action text-4xl font-bold leading-none text-login-foreground">n</span>
+        <span aria-hidden="true" className="text-3xl font-bold">NAGUMO</span>
       </div>
-    </div>
-  );
+      <h1 id="login-title" className="text-2xl font-semibold">Acessar sistema</h1>
+      <p className="mb-7 mt-2 text-sm text-login-muted">Segurança Patrimonial</p>
+      <form onSubmit={entrar} className="space-y-5" aria-busy={enviando || loading}>
+        <div className="space-y-2">
+          <label htmlFor="login-email" className="text-sm font-medium">E-mail</label>
+          <div className="relative">
+            <Mail className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-login-muted" />
+            <Input id="login-email" type="email" autoComplete="username" required disabled={enviando} value={email} onChange={e => setEmail(e.target.value)} placeholder="Seu e-mail" className="h-12 border-login-border bg-login-input pl-10 text-login-foreground placeholder:text-login-muted" />
+          </div>
+        </div>
+        <div className="space-y-2">
+          <label htmlFor="login-senha" className="text-sm font-medium">Senha</label>
+          <div className="relative">
+            <LockKeyhole className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-login-muted" />
+            <Input id="login-senha" type={mostrarSenha ? "text" : "password"} autoComplete="current-password" required disabled={enviando} value={senha} onChange={e => setSenha(e.target.value)} placeholder="Sua senha" className="h-12 border-login-border bg-login-input pl-10 pr-12 text-login-foreground placeholder:text-login-muted" />
+            <Button type="button" size="icon" variant="ghost" aria-label={mostrarSenha ? "Ocultar senha" : "Mostrar senha"} title={mostrarSenha ? "Ocultar senha" : "Mostrar senha"} onClick={() => setMostrarSenha(value => !value)} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-login-muted">
+              {mostrarSenha ? <EyeOff /> : <Eye />}
+            </Button>
+          </div>
+        </div>
+        {(erro || authError) && <p role="alert" className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-3 text-sm text-destructive">{erro ?? authError}</p>}
+        <Button type="submit" variant="login" disabled={enviando || loading} className="h-12 w-full">
+          {(enviando || loading) && <LoaderCircle className="animate-spin motion-reduce:animate-none" />}
+          {enviando ? "Entrando..." : loading ? "Verificando acesso..." : "Entrar"}
+        </Button>
+      </form>
+      <p className="mt-8 border-t border-login-border pt-5 text-center text-xs leading-5 text-login-muted">OS e Reservas CFTV · Acesso restrito</p>
+    </section>
+  </main>;
 }

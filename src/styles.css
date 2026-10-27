@@ -52,6 +52,14 @@
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
   --color-brand: var(--brand);
+  --color-login-background: var(--login-background);
+  --color-login-card: var(--login-card);
+  --color-login-input: var(--login-input);
+  --color-login-border: var(--login-border);
+  --color-login-foreground: var(--login-foreground);
+  --color-login-muted: var(--login-muted);
+  --color-login-action: var(--login-action);
+  --color-login-action-hover: var(--login-action-hover);
   --color-brand-foreground: var(--brand-foreground);
   --color-success: var(--success);
   --color-success-foreground: var(--success-foreground);
@@ -115,6 +123,14 @@
   --shadow-card: 0 1px 0 0 oklch(1 0 0 / 4%) inset, 0 8px 24px -12px oklch(0 0 0 / 60%);
   --brand: oklch(0.55 0.19 18);
   --brand-foreground: oklch(0.985 0 0);
+  --login-background: #1a2332;
+  --login-card: oklch(0.208 0.042 265.755);
+  --login-input: oklch(0.245 0.035 265.755);
+  --login-border: oklch(0.789 0.154 211.53 / 30%);
+  --login-foreground: oklch(1 0 0);
+  --login-muted: oklch(0.76 0.023 257);
+  --login-action: oklch(0.577 0.245 27.325);
+  --login-action-hover: oklch(0.505 0.213 27.518);
 }
 
 @layer base {

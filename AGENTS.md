@@ -8,3 +8,6 @@
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
+
+- Keep email/password login at `/login`; public signup/recovery routes are absent because accounts are administered internally.
+- Login-specific semantic tokens in `src/styles.css` and the Button login variant isolate its branding from operational screens.

@@ -10,6 +10,7 @@ import {
   ClipboardCheck,
   LogOut,
   UserCog,
+  Wrench,
 } from "lucide-react";
 import {
   Sidebar,
@@ -31,6 +32,7 @@ const items = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Ordens de Serviço", url: "/ordens", icon: ClipboardList },
   { title: "Reservas CFTV", url: "/reservas", icon: Cctv },
+  { title: "Solicitação de Reparo", url: "/reparos", icon: Wrench },
   { title: "Supervisão", url: "/supervisao", icon: ClipboardCheck },
   { title: "Cadastro", url: "/cadastro", icon: UserPlus },
   { title: "Configurações", url: "/configuracoes", icon: Settings },

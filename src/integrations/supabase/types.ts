@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      repair_requests: {
+        Row: {
+          created_at: string
+          created_by: string
+          descricao: string
+          empresa_responsavel: string
+          gerente: string
+          glpi_numero: string
+          id: string
+          imagens: Json
+          loja: string
+          solicitante: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string
+          descricao?: string
+          empresa_responsavel?: string
+          gerente?: string
+          glpi_numero?: string
+          id: string
+          imagens?: Json
+          loja: string
+          solicitante?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          descricao?: string
+          empresa_responsavel?: string
+          gerente?: string
+          glpi_numero?: string
+          id?: string
+          imagens?: Json
+          loja?: string
+          solicitante?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string

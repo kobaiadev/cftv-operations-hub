@@ -13,3 +13,4 @@
 - Login-specific semantic tokens in `src/styles.css` and the Button login variant isolate its branding from operational screens.
 - Account creation and revocation use authenticated server functions that verify the caller's stored access level before loading the privileged client; browser role writes and public signup are forbidden.
 - Cloud access assignments use `user_roles.user_id`, `display_name`, `email`, and `role`; preserve the existing access-level meanings.
+- Preserve authentication context identity through Vite hot data during Fast Refresh so mounted providers and updated consumers cannot diverge.

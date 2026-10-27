@@ -1,7 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { toast } from "sonner";
-import { sincronizarEstadoApp } from "@/lib/app-state";
 import { obterClienteSupabase } from "@/lib/supabase";
 import "@/lib/os-store";
 import "@/lib/cadastro-store";
@@ -30,6 +29,24 @@ function isAccessRole(value: unknown): value is AccessRole {
   return value === "00" || value === "01" || value === "02" || value === "03";
 }
 
+export function mapearPerfilUsuario(data: unknown): UserProfile | null {
+  if (!data || typeof data !== "object") return null;
+  const row = data as Record<string, unknown>;
+  const userId = typeof row["id"] === "string" ? row["id"] : row["user_id"];
+  const displayName = typeof row["nome"] === "string" ? row["nome"] : row["display_name"];
+  const role = isAccessRole(row["nivel_acesso"]) ? row["nivel_acesso"] : row["role"];
+  const email = row["email"];
+  if (
+    typeof userId !== "string" ||
+    typeof email !== "string" ||
+    typeof displayName !== "string" ||
+    !isAccessRole(role)
+  ) {
+    return null;
+  }
+  return { user_id: userId, email, display_name: displayName, role };
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -39,18 +56,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const loadProfile = async (userId: string) => {
     const { data, error: profileError } = await obterClienteSupabase()
       .from("user_roles")
-      .select("user_id, email, display_name, role")
-      .eq("user_id", userId)
+      .select("id, nome, email, nivel_acesso")
+      .eq("id", userId)
       .maybeSingle();
     if (profileError)
       throw new Error(`Não foi possível carregar o perfil: ${profileError.message}`);
-    if (!data || !isAccessRole(data.role)) {
+    const userProfile = mapearPerfilUsuario(data);
+    if (!userProfile) {
       setProfile(null);
       setError("Esta conta ainda não possui um nível de acesso atribuído.");
       return;
     }
-    await sincronizarEstadoApp(data.role, userId);
-    setProfile(data as UserProfile);
+    setProfile(userProfile);
     setError(null);
   };
 

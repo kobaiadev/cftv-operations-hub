@@ -1,6 +1,7 @@
 import { createFileRoute, Navigate } from "@tanstack/react-router";
 import { LoaderCircle, ShieldPlus, Trash2, UsersRound } from "lucide-react";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { createClient } from "@supabase/supabase-js";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,7 +20,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ehAdministrador, NIVEIS_ACESSO, useAuth, type AccessRole } from "@/lib/auth";
+import {
+  ehAdministrador,
+  mapearPerfilUsuario,
+  NIVEIS_ACESSO,
+  useAuth,
+  type AccessRole,
+} from "@/lib/auth";
 import { obterClienteSupabase } from "@/lib/supabase";
 
 type ManagedUser = {
@@ -27,24 +34,7 @@ type ManagedUser = {
   email: string;
   display_name: string;
   role: AccessRole;
-  created_at: string;
 };
-
-async function executarAcaoUsuarios<T>(payload: Record<string, string>) {
-  const { data, error } = await obterClienteSupabase().functions.invoke<T>("manage-users", {
-    body: payload,
-  });
-  if (error) {
-    const response = error.context instanceof Response ? await error.context.clone().json() : null;
-    throw new Error(
-      typeof response?.error === "string"
-        ? response.error
-        : `Falha na gestão de usuários: ${error.message}`,
-    );
-  }
-  if (!data) throw new Error("O serviço não retornou dados dos usuários.");
-  return data;
-}
 
 export const Route = createFileRoute("/usuarios")({
   head: () => ({ meta: [{ title: "Usuários do Sistema — Segurança Patrimonial" }] }),
@@ -65,8 +55,19 @@ function UsuariosPage() {
   const carregarUsuarios = useCallback(async () => {
     setCarregando(true);
     try {
-      const resultado = await executarAcaoUsuarios<{ users: ManagedUser[] }>({ action: "list" });
-      setUsuarios(resultado.users);
+      const { data, error } = await obterClienteSupabase()
+        .from("user_roles")
+        .select("id, nome, email, nivel_acesso")
+        .order("nome");
+      if (error) throw new Error(`Não foi possível carregar os usuários: ${error.message}`);
+      const perfis = (data ?? []).map((usuario) => {
+        const perfil = mapearPerfilUsuario(usuario);
+        if (!perfil) {
+          throw new Error("A tabela user_roles contém um usuário com dados ou nível inválidos.");
+        }
+        return perfil;
+      });
+      setUsuarios(perfis);
     } catch (error) {
       console.error("Erro ao carregar usuários do sistema.", error);
       toast.error(error instanceof Error ? error.message : "Não foi possível carregar usuários.");
@@ -87,13 +88,44 @@ function UsuariosPage() {
     event.preventDefault();
     setSalvando(true);
     try {
-      await executarAcaoUsuarios({
-        action: "create",
-        email,
-        displayName: nome,
-        password: senha,
-        role: nivel,
+      const supabaseUrl = import.meta.env.NEXT_PUBLIC_SUPABASE_URL;
+      const publicKey = import.meta.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+      if (!supabaseUrl || !publicKey) {
+        throw new Error("Configure a conexão com Supabase para cadastrar usuários.");
+      }
+
+      const signupClient = createClient(supabaseUrl, publicKey, {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
+          detectSessionInUrl: false,
+        },
       });
+      const emailNormalizado = email.trim().toLowerCase();
+      const { data: signupData, error: signupError } = await signupClient.auth.signUp({
+        email: emailNormalizado,
+        password: senha,
+      });
+      if (signupError) throw new Error(`Não foi possível criar a conta: ${signupError.message}`);
+      if (!signupData.user || !signupData.user.identities?.length) {
+        throw new Error(
+          "Não foi possível criar a conta. Verifique se o e-mail já está cadastrado.",
+        );
+      }
+
+      const { error: roleError } = await obterClienteSupabase().from("user_roles").insert({
+        id: signupData.user.id,
+        nome: nome.trim(),
+        email: emailNormalizado,
+        nivel_acesso: nivel,
+      });
+      if (roleError) {
+        console.error("A conta Auth foi criada, mas o perfil de acesso não foi salvo.", roleError);
+        throw new Error(
+          "A conta foi criada no Supabase Auth, mas não foi possível salvar seu nível de acesso. Verifique as políticas RLS da tabela user_roles.",
+        );
+      }
+
       setNome("");
       setEmail("");
       setSenha("");
@@ -109,11 +141,20 @@ function UsuariosPage() {
   };
 
   const excluirUsuario = async (usuario: ManagedUser) => {
-    if (!window.confirm(`Excluir o acesso de ${usuario.display_name} (${usuario.email})?`)) return;
+    if (
+      !window.confirm(
+        `Revogar o acesso de ${usuario.display_name} (${usuario.email})? A conta do Supabase Auth não será apagada.`,
+      )
+    )
+      return;
     setExcluindoId(usuario.user_id);
     try {
-      await executarAcaoUsuarios({ action: "delete", userId: usuario.user_id });
-      toast.success("Usuário excluído.");
+      const { error } = await obterClienteSupabase()
+        .from("user_roles")
+        .delete()
+        .eq("id", usuario.user_id);
+      if (error) throw new Error(`Não foi possível revogar o acesso: ${error.message}`);
+      toast.success("Acesso ao sistema revogado. A conta do Supabase Auth foi mantida.");
       await carregarUsuarios();
     } catch (error) {
       console.error("Erro ao excluir usuário do sistema.", error);
@@ -223,7 +264,8 @@ function UsuariosPage() {
         <div className="border-b border-border px-5 py-4">
           <h2 className="font-semibold">Usuários cadastrados</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            A exclusão revoga imediatamente a conta e o acesso ao sistema.
+            A lista e os níveis são carregados de user_roles. A confirmação de e-mail do Auth,
+            quando habilitada no Supabase, é necessária para o primeiro acesso.
           </p>
         </div>
         <div className="overflow-x-auto">

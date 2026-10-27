@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ehAdministrador, podeBaixar, podeEditar } from "@/lib/auth";
+import { ehAdministrador, mapearPerfilUsuario, podeBaixar, podeEditar } from "@/lib/auth";
 
 describe("permissões por nível de acesso", () => {
   it("limita cada nível às operações atribuídas", () => {
@@ -24,5 +24,34 @@ describe("permissões por nível de acesso", () => {
       false,
       false,
     ]);
+  });
+
+  describe("perfil de usuário do Supabase", () => {
+    it("mapeia as colunas configuradas em user_roles", () => {
+      expect(
+        mapearPerfilUsuario({
+          id: "uuid-do-usuario",
+          nome: "Pessoa Usuária",
+          email: "pessoa@nagumo.com.br",
+          nivel_acesso: "00",
+        }),
+      ).toEqual({
+        user_id: "uuid-do-usuario",
+        display_name: "Pessoa Usuária",
+        email: "pessoa@nagumo.com.br",
+        role: "00",
+      });
+    });
+
+    it("rejeita níveis não reconhecidos", () => {
+      expect(
+        mapearPerfilUsuario({
+          id: "uuid-do-usuario",
+          nome: "Pessoa Usuária",
+          email: "pessoa@nagumo.com.br",
+          nivel_acesso: "99",
+        }),
+      ).toBeNull();
+    });
   });
 });

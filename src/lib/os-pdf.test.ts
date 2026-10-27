@@ -65,7 +65,7 @@ vi.mock("@/lib/os-files", () => ({
   lerAnexos: vi.fn(async () => pdf.anexos),
 }));
 
-import { baixarPdfOS, normalizarTextoRelatorio } from "@/lib/os-pdf";
+import { baixarPdfOS, baixarPdfReparo, normalizarTextoRelatorio } from "@/lib/os-pdf";
 import type { OS } from "@/lib/os-store";
 
 describe("layout do relatório de OS em PDF", () => {
@@ -88,6 +88,33 @@ describe("layout do relatório de OS em PDF", () => {
 
   afterEach(() => {
     vi.unstubAllGlobals();
+  });
+
+  it("preserva dados e acentos do reparo sem enviar emojis ou acentos decompostos ao PDF", async () => {
+    await baixarPdfReparo(
+      {
+        id: "SR-1234",
+        created_at: "2026-10-27T22:00:00Z",
+        loja: "São João",
+        gerente: "João Gonçalves",
+        empresa_responsavel: "Manutenc\u0327a\u0303o Técnica",
+        solicitante: "José da Conceição",
+        glpi_numero: "12345",
+        descricao:
+          "Solicitação de manutenção. 🔧\n\nAc\u0327a\u0303o necessária: substituição da peça.",
+        imagens: [],
+      },
+      [],
+    );
+    expect(pdf.textos).toContain("SR-1234");
+    expect(pdf.textos).toContain("12345");
+    expect(pdf.textos).toContain("São João");
+    expect(pdf.textos).toContain("João Gonçalves");
+    expect(pdf.textos).toContain("Manutenção Técnica");
+    expect(pdf.textos).toContain("José da Conceição");
+    expect(pdf.textos).toContain("Solicitação de manutenção.");
+    expect(pdf.textos).toContain("Ação necessária: substituição da peça.");
+    expect(pdf.textos.join("\n")).not.toMatch(/[\u0300-\u036f]|🔧/u);
   });
 
   it("corrige rótulos OCR compactados e padroniza o campo de horário", () => {

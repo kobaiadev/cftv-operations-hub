@@ -91,17 +91,21 @@ describe("layout do relatório de OS em PDF", () => {
   });
 
   it("preserva dados e acentos do reparo sem enviar emojis ou acentos decompostos ao PDF", async () => {
-    await baixarPdfReparo({
-      id: "SR-1234",
-      created_at: "2026-10-27T22:00:00Z",
-      loja: "São João",
-      gerente: "João Gonçalves",
-      empresa_responsavel: "Manutenc\u0327a\u0303o Técnica",
-      solicitante: "José da Conceição",
-      glpi_numero: "12345",
-      descricao: "Solicitação de manutenção. 🔧\n\nAc\u0327a\u0303o necessária: substituição da peça.",
-      imagens: [],
-    }, []);
+    await baixarPdfReparo(
+      {
+        id: "SR-1234",
+        created_at: "2026-10-27T22:00:00Z",
+        loja: "São João",
+        gerente: "João Gonçalves",
+        empresa_responsavel: "Manutenc\u0327a\u0303o Técnica",
+        solicitante: "José da Conceição",
+        glpi_numero: "12345",
+        descricao:
+          "Solicitação de manutenção. 🔧\n\nAc\u0327a\u0303o necessária: substituição da peça.",
+        imagens: [],
+      },
+      [],
+    );
     expect(pdf.textos).toContain("SR-1234");
     expect(pdf.textos).toContain("12345");
     expect(pdf.textos).toContain("São João");

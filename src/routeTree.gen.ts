@@ -13,12 +13,9 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AnalisePerdasRouteImport } from './routes/analise-perdas'
 import { Route as CadastroRouteImport } from './routes/cadastro'
 import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
-import { Route as CriarContaRouteImport } from './routes/criar-conta'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as OrdensRouteImport } from './routes/ordens'
-import { Route as RecuperarSenhaRouteImport } from './routes/recuperar-senha'
 import { Route as ReservasRouteImport } from './routes/reservas'
-import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SupervisaoRouteImport } from './routes/supervisao'
 import { Route as UsuariosRouteImport } from './routes/usuarios'
 
@@ -42,11 +39,6 @@ const ConfiguracoesRoute = ConfiguracoesRouteImport.update({
   path: '/configuracoes',
   getParentRoute: () => rootRouteImport,
 } as any)
-const CriarContaRoute = CriarContaRouteImport.update({
-  id: '/criar-conta',
-  path: '/criar-conta',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -57,19 +49,9 @@ const OrdensRoute = OrdensRouteImport.update({
   path: '/ordens',
   getParentRoute: () => rootRouteImport,
 } as any)
-const RecuperarSenhaRoute = RecuperarSenhaRouteImport.update({
-  id: '/recuperar-senha',
-  path: '/recuperar-senha',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ReservasRoute = ReservasRouteImport.update({
   id: '/reservas',
   path: '/reservas',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ResetPasswordRoute = ResetPasswordRouteImport.update({
-  id: '/reset-password',
-  path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SupervisaoRoute = SupervisaoRouteImport.update({
@@ -88,12 +70,9 @@ export interface FileRoutesByFullPath {
   '/analise-perdas': typeof AnalisePerdasRoute
   '/cadastro': typeof CadastroRoute
   '/configuracoes': typeof ConfiguracoesRoute
-  '/criar-conta': typeof CriarContaRoute
   '/login': typeof LoginRoute
   '/ordens': typeof OrdensRoute
-  '/recuperar-senha': typeof RecuperarSenhaRoute
   '/reservas': typeof ReservasRoute
-  '/reset-password': typeof ResetPasswordRoute
   '/supervisao': typeof SupervisaoRoute
   '/usuarios': typeof UsuariosRoute
 }
@@ -102,12 +81,9 @@ export interface FileRoutesByTo {
   '/analise-perdas': typeof AnalisePerdasRoute
   '/cadastro': typeof CadastroRoute
   '/configuracoes': typeof ConfiguracoesRoute
-  '/criar-conta': typeof CriarContaRoute
   '/login': typeof LoginRoute
   '/ordens': typeof OrdensRoute
-  '/recuperar-senha': typeof RecuperarSenhaRoute
   '/reservas': typeof ReservasRoute
-  '/reset-password': typeof ResetPasswordRoute
   '/supervisao': typeof SupervisaoRoute
   '/usuarios': typeof UsuariosRoute
 }
@@ -117,12 +93,9 @@ export interface FileRoutesById {
   '/analise-perdas': typeof AnalisePerdasRoute
   '/cadastro': typeof CadastroRoute
   '/configuracoes': typeof ConfiguracoesRoute
-  '/criar-conta': typeof CriarContaRoute
   '/login': typeof LoginRoute
   '/ordens': typeof OrdensRoute
-  '/recuperar-senha': typeof RecuperarSenhaRoute
   '/reservas': typeof ReservasRoute
-  '/reset-password': typeof ResetPasswordRoute
   '/supervisao': typeof SupervisaoRoute
   '/usuarios': typeof UsuariosRoute
 }
@@ -133,12 +106,9 @@ export interface FileRouteTypes {
     | '/analise-perdas'
     | '/cadastro'
     | '/configuracoes'
-    | '/criar-conta'
     | '/login'
     | '/ordens'
-    | '/recuperar-senha'
     | '/reservas'
-    | '/reset-password'
     | '/supervisao'
     | '/usuarios'
   fileRoutesByTo: FileRoutesByTo
@@ -147,12 +117,9 @@ export interface FileRouteTypes {
     | '/analise-perdas'
     | '/cadastro'
     | '/configuracoes'
-    | '/criar-conta'
     | '/login'
     | '/ordens'
-    | '/recuperar-senha'
     | '/reservas'
-    | '/reset-password'
     | '/supervisao'
     | '/usuarios'
   id:
@@ -161,12 +128,9 @@ export interface FileRouteTypes {
     | '/analise-perdas'
     | '/cadastro'
     | '/configuracoes'
-    | '/criar-conta'
     | '/login'
     | '/ordens'
-    | '/recuperar-senha'
     | '/reservas'
-    | '/reset-password'
     | '/supervisao'
     | '/usuarios'
   fileRoutesById: FileRoutesById
@@ -176,12 +140,9 @@ export interface RootRouteChildren {
   AnalisePerdasRoute: typeof AnalisePerdasRoute
   CadastroRoute: typeof CadastroRoute
   ConfiguracoesRoute: typeof ConfiguracoesRoute
-  CriarContaRoute: typeof CriarContaRoute
   LoginRoute: typeof LoginRoute
   OrdensRoute: typeof OrdensRoute
-  RecuperarSenhaRoute: typeof RecuperarSenhaRoute
   ReservasRoute: typeof ReservasRoute
-  ResetPasswordRoute: typeof ResetPasswordRoute
   SupervisaoRoute: typeof SupervisaoRoute
   UsuariosRoute: typeof UsuariosRoute
 }
@@ -216,13 +177,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ConfiguracoesRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/criar-conta': {
-      id: '/criar-conta'
-      path: '/criar-conta'
-      fullPath: '/criar-conta'
-      preLoaderRoute: typeof CriarContaRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/login': {
       id: '/login'
       path: '/login'
@@ -237,25 +191,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OrdensRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/recuperar-senha': {
-      id: '/recuperar-senha'
-      path: '/recuperar-senha'
-      fullPath: '/recuperar-senha'
-      preLoaderRoute: typeof RecuperarSenhaRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/reservas': {
       id: '/reservas'
       path: '/reservas'
       fullPath: '/reservas'
       preLoaderRoute: typeof ReservasRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/reset-password': {
-      id: '/reset-password'
-      path: '/reset-password'
-      fullPath: '/reset-password'
-      preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/supervisao': {
@@ -280,12 +220,9 @@ const rootRouteChildren: RootRouteChildren = {
   AnalisePerdasRoute: AnalisePerdasRoute,
   CadastroRoute: CadastroRoute,
   ConfiguracoesRoute: ConfiguracoesRoute,
-  CriarContaRoute: CriarContaRoute,
   LoginRoute: LoginRoute,
   OrdensRoute: OrdensRoute,
-  RecuperarSenhaRoute: RecuperarSenhaRoute,
   ReservasRoute: ReservasRoute,
-  ResetPasswordRoute: ResetPasswordRoute,
   SupervisaoRoute: SupervisaoRoute,
   UsuariosRoute: UsuariosRoute,
 }

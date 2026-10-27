@@ -29,10 +29,10 @@ type AuthContextValue = {
 // Fast Refresh can preserve the mounted provider while re-evaluating this module.
 // Keep its context identity so refreshed consumers read that same provider.
 const AuthContext =
-  (import.meta.hot?.data["authContext"] as
+  (import.meta.hot?.data?.["authContext"] as
     ReturnType<typeof createContext<AuthContextValue | null>> | undefined) ??
   createContext<AuthContextValue | null>(null);
-if (import.meta.hot) import.meta.hot.data["authContext"] = AuthContext;
+if (import.meta.hot?.data) import.meta.hot.data["authContext"] = AuthContext;
 
 function isAccessRole(value: unknown): value is AccessRole {
   return value === "00" || value === "01" || value === "02" || value === "03";

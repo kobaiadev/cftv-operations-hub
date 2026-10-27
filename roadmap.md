@@ -1,4 +1,5 @@
 # Login repair
+- [ ] Padronizar o PDF de reparos reutilizando o template de OS, verificar texto, grids e anexos.
 - [x] Verify the authentication context survives live preview updates without blanking login.
 - [x] Remove incomplete public signup and password-recovery pages.
 - [x] Replace login with the requested Nagumo design and sign-in feedback.

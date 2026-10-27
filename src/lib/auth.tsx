@@ -56,8 +56,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const loadProfile = async (userId: string) => {
     const { data, error: profileError } = await obterClienteSupabase()
       .from("user_roles")
-      .select("id, nome, email, nivel_acesso")
-      .eq("id", userId)
+      .select("user_id, display_name, email, role")
+      .eq("user_id", userId)
       .maybeSingle();
     if (profileError)
       throw new Error(`Não foi possível carregar o perfil: ${profileError.message}`);

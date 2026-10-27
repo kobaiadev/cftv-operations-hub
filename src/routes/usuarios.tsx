@@ -1,7 +1,9 @@
 import { createFileRoute, Navigate } from "@tanstack/react-router";
 import { LoaderCircle, ShieldPlus, Trash2, UsersRound } from "lucide-react";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
-import { createClient } from "@supabase/supabase-js";
+import { useServerFn } from "@tanstack/react-start";
+import { createAccount, revokeAccountAccess } from "@/lib/accounts.functions";
+import { accountSchema } from "@/lib/account-rules";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -57,6 +59,8 @@ export const Route = createFileRoute("/usuarios")({
 });
 
 function UsuariosPage() {
+  const create = useServerFn(createAccount);
+  const revoke = useServerFn(revokeAccountAccess);
   const { profile, loading } = useAuth();
   const [usuarios, setUsuarios] = useState<ManagedUser[]>([]);
   const [nome, setNome] = useState("");
@@ -72,8 +76,8 @@ function UsuariosPage() {
     try {
       const { data, error } = await obterClienteSupabase()
         .from("user_roles")
-        .select("id, nome, email, nivel_acesso")
-        .order("nome");
+        .select("user_id, display_name, email, role")
+        .order("display_name");
       if (error) throw new Error(`Não foi possível carregar os usuários: ${error.message}`);
       const perfis = (data ?? []).map((usuario) => {
         const perfil = mapearPerfilUsuario(usuario);
@@ -103,43 +107,9 @@ function UsuariosPage() {
     event.preventDefault();
     setSalvando(true);
     try {
-      const supabaseUrl = import.meta.env.NEXT_PUBLIC_SUPABASE_URL;
-      const publicKey = import.meta.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-      if (!supabaseUrl || !publicKey) {
-        throw new Error("Configure a conexão com Supabase para cadastrar usuários.");
-      }
-
-      const signupClient = createClient(supabaseUrl, publicKey, {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false,
-          detectSessionInUrl: false,
-        },
-      });
-      const emailNormalizado = email.trim().toLowerCase();
-      const { data: signupData, error: signupError } = await signupClient.auth.signUp({
-        email: emailNormalizado,
-        password: senha,
-      });
-      if (signupError) throw new Error(`Não foi possível criar a conta: ${signupError.message}`);
-      if (!signupData.user || !signupData.user.identities?.length) {
-        throw new Error(
-          "Não foi possível criar a conta. Verifique se o e-mail já está cadastrado.",
-        );
-      }
-
-      const { error: roleError } = await obterClienteSupabase().from("user_roles").insert({
-        id: signupData.user.id,
-        nome: nome.trim(),
-        email: emailNormalizado,
-        nivel_acesso: nivel,
-      });
-      if (roleError) {
-        console.error("A conta Auth foi criada, mas o perfil de acesso não foi salvo.", roleError);
-        throw new Error(
-          "A conta foi criada no Supabase Auth, mas não foi possível salvar seu nível de acesso. Verifique as políticas RLS da tabela user_roles.",
-        );
-      }
+      const input = accountSchema.safeParse({ nome, email, senha, nivel });
+      if (!input.success) throw new Error("Verifique nome, e-mail, senha e nível de acesso.");
+      await create({ data: input.data });
 
       setNome("");
       setEmail("");
@@ -158,18 +128,14 @@ function UsuariosPage() {
   const excluirUsuario = async (usuario: ManagedUser) => {
     if (
       !window.confirm(
-        `Revogar o acesso de ${usuario.display_name} (${usuario.email})? A conta do Supabase Auth não será apagada.`,
+        `Revogar o acesso de ${usuario.display_name} (${usuario.email})? A conta será mantida no Lovable Cloud.`,
       )
     )
       return;
     setExcluindoId(usuario.user_id);
     try {
-      const { error } = await obterClienteSupabase()
-        .from("user_roles")
-        .delete()
-        .eq("id", usuario.user_id);
-      if (error) throw new Error(`Não foi possível revogar o acesso: ${error.message}`);
-      toast.success("Acesso ao sistema revogado. A conta do Supabase Auth foi mantida.");
+      await revoke({ data: { userId: usuario.user_id } });
+      toast.success("Acesso ao sistema revogado. A conta foi mantida no Lovable Cloud.");
       await carregarUsuarios();
     } catch (error) {
       console.error("Erro ao excluir usuário do sistema.", error);
@@ -279,8 +245,7 @@ function UsuariosPage() {
         <div className="border-b border-border px-5 py-4">
           <h2 className="font-semibold">Usuários cadastrados</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            A lista e os níveis são carregados de user_roles. A confirmação de e-mail do Auth,
-            quando habilitada no Supabase, é necessária para o primeiro acesso.
+            Contas e níveis de acesso atribuídos pelos administradores.
           </p>
         </div>
         <div className="overflow-x-auto">

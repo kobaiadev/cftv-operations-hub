@@ -11,3 +11,5 @@
 
 - Keep email/password login at `/login`; public signup/recovery routes are absent because accounts are administered internally.
 - Login-specific semantic tokens in `src/styles.css` and the Button login variant isolate its branding from operational screens.
+- Account creation and revocation use authenticated server functions that verify the caller's stored access level before loading the privileged client; browser role writes and public signup are forbidden.
+- Cloud access assignments use `user_roles.user_id`, `display_name`, `email`, and `role`; preserve the existing access-level meanings.

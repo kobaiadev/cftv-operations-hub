@@ -24,7 +24,7 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { useAuth, ehAdministrador, NIVEIS_ACESSO } from "@/lib/auth";
-import { obterClienteSupabase } from "@/lib/supabase";
+import { Button } from "@/components/ui/button";
 
 const items = [
   { title: "Análise de Perdas", url: "/analise-perdas", icon: ChartNoAxesCombined },
@@ -39,7 +39,7 @@ const items = [
 
 export function AppSidebar() {
   const path = useRouterState({ select: (r) => r.location.pathname });
-  const { profile } = useAuth();
+  const { profile, signOut } = useAuth();
   const visibleItems = items.filter(
     (item) => !("adminOnly" in item) || ehAdministrador(profile?.role),
   );
@@ -90,15 +90,17 @@ export function AppSidebar() {
             <span className="truncate text-sm font-medium">{profile?.display_name}</span>
             <span className="truncate text-xs text-muted-foreground">{roleLabel}</span>
           </div>
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="icon"
             className="flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive group-data-[collapsible=icon]:hidden"
             aria-label="Sair do sistema"
             title="Sair do sistema"
-            onClick={() => void obterClienteSupabase().auth.signOut()}
+            onClick={() => void signOut()}
           >
             <LogOut className="size-4" />
-          </button>
+          </Button>
         </div>
       </SidebarFooter>
     </Sidebar>

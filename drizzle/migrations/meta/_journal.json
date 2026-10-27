@@ -1,5 +1,20 @@
 {
   "version": "7",
   "dialect": "postgresql",
-  "entries": []
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1793136177260,
+      "tag": "0000_cloud_account_access",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1793136285166,
+      "tag": "0001_restrict_access_role_lookup",
+      "breakpoints": true
+    }
+  ]
 }

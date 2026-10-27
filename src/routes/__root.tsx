@@ -17,7 +17,8 @@ import { AppSidebar } from "@/components/app-sidebar";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AuthProvider, useAuth } from "@/lib/auth";
-import { obterClienteSupabase } from "@/lib/supabase";
+import { Button } from "@/components/ui/button";
+import { Toaster } from "@/components/ui/sonner";
 
 function NotFoundComponent() {
   return (
@@ -142,13 +143,14 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <AuthenticatedRoot />
+        <Toaster />
       </AuthProvider>
     </QueryClientProvider>
   );
 }
 
 function AuthenticatedRoot() {
-  const { session, profile, loading, error } = useAuth();
+  const { session, profile, loading, error, signOut } = useAuth();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
 
   if (pathname === "/login") {
@@ -156,7 +158,7 @@ function AuthenticatedRoot() {
   }
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#17365d] text-white">
+      <div className="flex min-h-screen items-center justify-center bg-background text-foreground">
         <p className="text-sm">Verificando acesso seguro...</p>
       </div>
     );
@@ -170,13 +172,14 @@ function AuthenticatedRoot() {
           <p className="mt-2 text-sm text-muted-foreground">
             {error ?? "Sua conta não possui um nível de acesso atribuído."}
           </p>
-          <button
+          <Button
             type="button"
-            className="mt-5 rounded-md bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground"
-            onClick={() => void obterClienteSupabase().auth.signOut()}
+            variant="destructive"
+            className="mt-5"
+            onClick={() => void signOut()}
           >
             Sair
-          </button>
+          </Button>
         </div>
       </div>
     );

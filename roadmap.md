@@ -2,5 +2,7 @@
 - [x] Remove incomplete public signup and password-recovery pages.
 - [x] Replace login with the requested Nagumo design and sign-in feedback.
 - [x] Verify signed-out private access, route removal, tests and lint; automatic build passes. Full lint retains pre-existing findings outside this change.
-- [ ] Enable Cloud email/password sign-in and secure administrator-only account creation without new profile fields.
-- [ ] Verify Cloud authentication and account creation; identify any first-administrator setup requirement.
+- [x] Enable Cloud email/password sign-in and secure administrator-only account creation without new profile fields.
+- [x] Verify real Cloud invalid-login feedback, signed-out access, account authorization tests and automatic build.
+- [ ] Disable public signup in More → Users → Auth settings; hosted HIBP configuration could not be read safely, so the combined configuration tool was not used.
+- [ ] Create the first administrator via More → Users → Add user, then assign level 00 to that selected account. Cloud currently has no accounts; successful sign-in and administrator creation cannot be verified until this exists.

@@ -6,6 +6,8 @@ export const Route = createFileRoute("/configuracoes")({
   head: () => ({
     meta: [
       { title: "Configurações — Controle PP" },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
       { name: "description", content: "Configurações do sistema de controle de OS e CFTV." },
       { property: "og:title", content: "Configurações — Controle PP" },
       { property: "og:description", content: "Configurações do sistema de controle de OS e CFTV." },

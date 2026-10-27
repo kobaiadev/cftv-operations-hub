@@ -37,7 +37,22 @@ type ManagedUser = {
 };
 
 export const Route = createFileRoute("/usuarios")({
-  head: () => ({ meta: [{ title: "Usuários do Sistema — Segurança Patrimonial" }] }),
+  head: () => ({
+    meta: [
+      { title: "Usuários do Sistema — Segurança Patrimonial Nagumo" },
+      {
+        name: "description",
+        content: "Administração interna de usuários e níveis de acesso Nagumo.",
+      },
+      { property: "og:title", content: "Usuários do Sistema — Segurança Patrimonial Nagumo" },
+      {
+        property: "og:description",
+        content: "Administração interna de usuários e níveis de acesso Nagumo.",
+      },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
   component: UsuariosPage,
 });
 

@@ -178,7 +178,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await queryClient.cancelQueries();
         queryClient.clear();
         const { error: signOutError } = await obterClienteSupabase().auth.signOut();
-        if (signOutError) { toast.error("Não foi possível sair. Tente novamente."); return; }
+        if (signOutError) {
+          toast.error("Não foi possível sair. Tente novamente.");
+          return;
+        }
         await navigate({ to: "/login", replace: true });
       },
       refreshProfile: async () => {

@@ -14,7 +14,8 @@ describe("administrator-only account registration", () => {
   });
   it("accepts only the existing assigned levels", () => {
     const data = { nome: "Pessoa", email: "person@example.com", senha: "test-password-long" };
-    for (const nivel of ["00", "01", "02", "03"]) expect(accountSchema.safeParse({ ...data, nivel }).success).toBe(true);
+    for (const nivel of ["00", "01", "02", "03"])
+      expect(accountSchema.safeParse({ ...data, nivel }).success).toBe(true);
     expect(accountSchema.safeParse({ ...data, nivel: "99" }).success).toBe(false);
   });
 });

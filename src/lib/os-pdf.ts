@@ -755,3 +755,144 @@ export async function baixarPdfOS(os: OS) {
   rodape();
   doc.save(`${os.id}.pdf`);
 }
+
+/** Mesmo template formal das OS, mapeado para os campos de Solicitação de Reparo. */
+export async function baixarPdfReparo(
+  sr: import("@/lib/reparo-api").SolicitacaoReparo,
+  imagens: { rotulo: string; detalhes: string; tipo: string; dataUrl: string }[],
+) {
+  const { jsPDF } = await import("jspdf");
+  const doc = new jsPDF({ unit: "mm", format: "a4" });
+  const W = 210;
+  const M = 18;
+  const CW = W - M * 2;
+  let y = 0;
+  const garantir = (h: number) => {
+    if (y + h > 272) {
+      doc.addPage();
+      y = 22;
+    }
+  };
+  const logo = await carregar(logoUrl);
+  const lw = 34;
+  const lh = (logo.naturalHeight / logo.naturalWidth) * lw;
+  doc.addImage(logo, "PNG", M, 12, lw, lh);
+  doc.setTextColor(...NAVY);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(13);
+  doc.text("SOLICITAÇÃO DE REPARO", W - M, 18, { align: "right" });
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8.5);
+  doc.setTextColor(...GRAY);
+  doc.text("Segurança Patrimonial · Controle de Reparos", W - M, 23, { align: "right" });
+  doc.text(`Emitido em ${new Date().toLocaleString("pt-BR")}`, W - M, 27.5, { align: "right" });
+  y = Math.max(12 + lh, 30) + 3;
+  doc.setDrawColor(...NAVY);
+  doc.setLineWidth(0.8);
+  doc.line(M, y, W - M, y);
+  doc.setDrawColor(...CYAN);
+  doc.setLineWidth(0.4);
+  doc.line(M, y + 1.2, W - M, y + 1.2);
+  y += 9;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(18);
+  doc.setTextColor(...NAVY);
+  doc.text(sr.id, M, y);
+  y += 8;
+
+  const secao = (titulo: string) => {
+    garantir(13);
+    doc.setFillColor(...NAVY);
+    doc.roundedRect(M, y, CW, 7, 1, 1, "F");
+    doc.setFillColor(...CYAN);
+    doc.rect(M, y, 1.5, 7, "F");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9.5);
+    doc.setTextColor(255, 255, 255);
+    doc.text(titulo.toLocaleUpperCase("pt-BR"), M + 4, y + 4.8);
+    y += 11;
+  };
+  const linhas = (pares: [string, string][]) => {
+    for (const [rotulo, v] of pares) {
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9.5);
+      const t = doc.splitTextToSize(v.trim() || "Não informado", CW - 10) as string[];
+      const altura = 10 + t.length * 4.5;
+      garantir(altura + 2);
+      doc.setFillColor(...LIGHT);
+      doc.setDrawColor(225, 230, 237);
+      doc.setLineWidth(0.2);
+      doc.roundedRect(M, y, CW, altura, 1.2, 1.2, "FD");
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8);
+      doc.setTextColor(...GRAY);
+      doc.text(`${rotulo}:`, M + 4, y + 4);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9.5);
+      doc.setTextColor(25, 25, 35);
+      doc.text(t, M + 4, y + 8.5);
+      y += altura + 2;
+    }
+    y += 3;
+  };
+
+  secao("Dados da solicitação");
+  linhas([
+    ["Data", new Date(sr.created_at).toLocaleString("pt-BR")],
+    ["Loja", sr.loja],
+    ["Gerente responsável pela loja", sr.gerente],
+    ["Empresa responsável pelo reparo", sr.empresa_responsavel],
+    ["Solicitante", sr.solicitante],
+    ["Nº Solicitação GLPI", sr.glpi_numero],
+  ]);
+  secao("Descrição da solicitação");
+  linhas([["Descrição", sr.descricao]]);
+
+  if (imagens.length) {
+    secao("Imagens vinculadas");
+    for (const a of imagens) {
+      try {
+        const img = await carregar(a.dataUrl);
+        let w = CW;
+        let h = (img.naturalHeight / img.naturalWidth) * w;
+        if (h > 190) {
+          h = 190;
+          w = (img.naturalWidth / img.naturalHeight) * h;
+        }
+        garantir(h + 16);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(9.5);
+        doc.setTextColor(...NAVY);
+        doc.text(a.rotulo, M, y);
+        y += 3;
+        doc.addImage(a.dataUrl, a.tipo.includes("png") ? "PNG" : "JPEG", M + (CW - w) / 2, y, w, h);
+        y += h + 4;
+        if (a.detalhes.trim()) {
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(8.5);
+          doc.setTextColor(...GRAY);
+          const t = doc.splitTextToSize(`Detalhes: ${a.detalhes}`, CW) as string[];
+          garantir(t.length * 4);
+          doc.text(t, M, y);
+          y += t.length * 4;
+        }
+        y += 5;
+      } catch (error) {
+        console.error("Não foi possível incorporar a imagem ao PDF.", error);
+      }
+    }
+  }
+
+  const n = doc.getNumberOfPages();
+  for (let i = 1; i <= n; i++) {
+    doc.setPage(i);
+    doc.setDrawColor(...CYAN);
+    doc.setLineWidth(0.4);
+    doc.line(M, 278, W - M, 278);
+    doc.setFontSize(7.5);
+    doc.setTextColor(...GRAY);
+    doc.text("Nagumo · Segurança Patrimonial · Documento interno confidencial", M, 284);
+    doc.text(`${sr.id} · Página ${i} de ${n}`, W - M, 284, { align: "right" });
+  }
+  doc.save(`${sr.id}.pdf`);
+}

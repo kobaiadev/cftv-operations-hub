@@ -152,11 +152,7 @@ function AuthenticatedRoot() {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
 
   if (pathname === "/login") {
-    return (
-      <SidebarProvider>
-        <Outlet />
-      </SidebarProvider>
-    );
+    return <Outlet />;
   }
   if (loading) {
     return (

@@ -1,6 +1,8 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
+import { useNavigate, useRouter } from "@tanstack/react-router";
 import { obterClienteSupabase } from "@/lib/supabase";
 import "@/lib/os-store";
 import "@/lib/cadastro-store";
@@ -21,6 +23,7 @@ type AuthContextValue = {
   loading: boolean;
   error: string | null;
   refreshProfile: () => Promise<void>;
+  signOut: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -48,6 +51,9 @@ export function mapearPerfilUsuario(data: unknown): UserProfile | null {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const queryClient = useQueryClient();
+  const router = useRouter();
+  const navigate = useNavigate();
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -78,10 +84,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     try {
       const supabase = obterClienteSupabase();
-      const authChange = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      const authChange = supabase.auth.onAuthStateChange((event, nextSession) => {
+        if (!["INITIAL_SESSION", "SIGNED_IN", "SIGNED_OUT", "USER_UPDATED"].includes(event)) return;
         generation += 1;
         const currentGeneration = generation;
         setSession(nextSession);
+        setProfile(null);
+        if (event !== "INITIAL_SESSION") {
+          void router.invalidate();
+          if (event !== "SIGNED_OUT") void queryClient.invalidateQueries();
+        }
         if (!nextSession) {
           setProfile(null);
           setError(null);
@@ -107,14 +119,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const initialGeneration = generation;
       void supabase.auth
-        .getSession()
+        .getUser()
         .then(async ({ data, error: sessionError }) => {
-          if (sessionError) throw sessionError;
+          if (sessionError && sessionError.name !== "AuthSessionMissingError") throw sessionError;
           if (!active || generation !== initialGeneration) return;
           const currentGeneration = ++generation;
-          setSession(data.session);
-          if (data.session) {
-            await loadProfile(data.session.user.id);
+          if (data.user) {
+            const { data: sessionData } = await supabase.auth.getSession();
+            setSession(sessionData.session);
+            await loadProfile(data.user.id);
           } else {
             setProfile(null);
             setError(null);
@@ -152,7 +165,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       active = false;
       subscription?.unsubscribe();
     };
-  }, []);
+  }, [router, queryClient]);
 
   const value = useMemo<AuthContextValue>(
     () => ({
@@ -161,12 +174,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       profile,
       loading,
       error,
+      signOut: async () => {
+        await queryClient.cancelQueries();
+        queryClient.clear();
+        const { error: signOutError } = await obterClienteSupabase().auth.signOut();
+        if (signOutError) { toast.error("Não foi possível sair. Tente novamente."); return; }
+        await navigate({ to: "/login", replace: true });
+      },
       refreshProfile: async () => {
         if (!session) return;
         await loadProfile(session.user.id);
       },
     }),
-    [session, profile, loading, error],
+    [session, profile, loading, error, queryClient, navigate],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

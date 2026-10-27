@@ -102,7 +102,8 @@ export async function criarTemplateOS(doc: jsPDF, id: string, titulo: string) {
       doc.line(M, 278, W - M, 278);
       doc.setFontSize(7.5);
       doc.setTextColor(...GRAY);
-      doc.text("Nagumo · Segurança Patrimonial · Documento interno confidencial", M, 284);
+      doc.setFont("helvetica", "normal");
+      doc.text("Nagumo Segurança Patrimonial - Documento interno confidencial", M, 284);
       doc.text(`${id} · Página ${i} de ${n}`, W - M, 284, { align: "right" });
     }
   };

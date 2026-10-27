@@ -14,3 +14,4 @@
 - Account creation and revocation use authenticated server functions that verify the caller's stored access level before loading the privileged client; browser role writes and public signup are forbidden.
 - Cloud access assignments use `user_roles.user_id`, `display_name`, `email`, and `role`; preserve the existing access-level meanings.
 - Preserve authentication context identity through Vite hot data during Fast Refresh so mounted providers and updated consumers cannot diverge.
+- Repair requests live in `repair_requests` + private `repair-images` bucket; the page reuses OS form parts (src/components/os-form-parts.tsx) and the OS PDF template (baixarPdfReparo) — why: one shared look and OCR flow.

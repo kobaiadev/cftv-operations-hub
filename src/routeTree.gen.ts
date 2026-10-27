@@ -15,6 +15,7 @@ import { Route as CadastroRouteImport } from './routes/cadastro'
 import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as OrdensRouteImport } from './routes/ordens'
+import { Route as ReparosRouteImport } from './routes/reparos'
 import { Route as ReservasRouteImport } from './routes/reservas'
 import { Route as SupervisaoRouteImport } from './routes/supervisao'
 import { Route as UsuariosRouteImport } from './routes/usuarios'
@@ -49,6 +50,11 @@ const OrdensRoute = OrdensRouteImport.update({
   path: '/ordens',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ReparosRoute = ReparosRouteImport.update({
+  id: '/reparos',
+  path: '/reparos',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ReservasRoute = ReservasRouteImport.update({
   id: '/reservas',
   path: '/reservas',
@@ -72,6 +78,7 @@ export interface FileRoutesByFullPath {
   '/configuracoes': typeof ConfiguracoesRoute
   '/login': typeof LoginRoute
   '/ordens': typeof OrdensRoute
+  '/reparos': typeof ReparosRoute
   '/reservas': typeof ReservasRoute
   '/supervisao': typeof SupervisaoRoute
   '/usuarios': typeof UsuariosRoute
@@ -83,6 +90,7 @@ export interface FileRoutesByTo {
   '/configuracoes': typeof ConfiguracoesRoute
   '/login': typeof LoginRoute
   '/ordens': typeof OrdensRoute
+  '/reparos': typeof ReparosRoute
   '/reservas': typeof ReservasRoute
   '/supervisao': typeof SupervisaoRoute
   '/usuarios': typeof UsuariosRoute
@@ -95,6 +103,7 @@ export interface FileRoutesById {
   '/configuracoes': typeof ConfiguracoesRoute
   '/login': typeof LoginRoute
   '/ordens': typeof OrdensRoute
+  '/reparos': typeof ReparosRoute
   '/reservas': typeof ReservasRoute
   '/supervisao': typeof SupervisaoRoute
   '/usuarios': typeof UsuariosRoute
@@ -108,6 +117,7 @@ export interface FileRouteTypes {
     | '/configuracoes'
     | '/login'
     | '/ordens'
+    | '/reparos'
     | '/reservas'
     | '/supervisao'
     | '/usuarios'
@@ -119,6 +129,7 @@ export interface FileRouteTypes {
     | '/configuracoes'
     | '/login'
     | '/ordens'
+    | '/reparos'
     | '/reservas'
     | '/supervisao'
     | '/usuarios'
@@ -130,6 +141,7 @@ export interface FileRouteTypes {
     | '/configuracoes'
     | '/login'
     | '/ordens'
+    | '/reparos'
     | '/reservas'
     | '/supervisao'
     | '/usuarios'
@@ -142,6 +154,7 @@ export interface RootRouteChildren {
   ConfiguracoesRoute: typeof ConfiguracoesRoute
   LoginRoute: typeof LoginRoute
   OrdensRoute: typeof OrdensRoute
+  ReparosRoute: typeof ReparosRoute
   ReservasRoute: typeof ReservasRoute
   SupervisaoRoute: typeof SupervisaoRoute
   UsuariosRoute: typeof UsuariosRoute
@@ -191,6 +204,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OrdensRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/reparos': {
+      id: '/reparos'
+      path: '/reparos'
+      fullPath: '/reparos'
+      preLoaderRoute: typeof ReparosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/reservas': {
       id: '/reservas'
       path: '/reservas'
@@ -222,6 +242,7 @@ const rootRouteChildren: RootRouteChildren = {
   ConfiguracoesRoute: ConfiguracoesRoute,
   LoginRoute: LoginRoute,
   OrdensRoute: OrdensRoute,
+  ReparosRoute: ReparosRoute,
   ReservasRoute: ReservasRoute,
   SupervisaoRoute: SupervisaoRoute,
   UsuariosRoute: UsuariosRoute,

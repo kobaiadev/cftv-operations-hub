@@ -10,6 +10,8 @@ export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "Dashboard — Controle de OS e Reservas CFTV" },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
       {
         name: "description",
         content: "Painel de análise de ocorrências e perdas da Segurança Patrimonial.",

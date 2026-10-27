@@ -65,6 +65,8 @@ export const Route = createFileRoute("/ordens")({
   head: () => ({
     meta: [
       { title: "Ordens de Serviço — Controle PP" },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
       {
         name: "description",
         content: "Gere OS a partir de prints já vinculadas à reserva de imagem do CFTV.",

@@ -39,6 +39,8 @@ export const Route = createFileRoute("/cadastro")({
   head: () => ({
     meta: [
       { title: "Cadastro — Controle PP" },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
       { name: "description", content: "Cadastro de lojas, fiscais e seguranças." },
       { property: "og:title", content: "Cadastro — Controle PP" },
       { property: "og:description", content: "Cadastro de lojas, fiscais e seguranças." },

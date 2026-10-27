@@ -16,6 +16,8 @@ export const Route = createFileRoute("/reservas")({
   head: () => ({
     meta: [
       { title: "Reservas CFTV — Controle PP" },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
       {
         name: "description",
         content: "Reservas de imagens de CFTV vinculadas às Ordens de Serviço.",

@@ -21,6 +21,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useCadastro } from "@/lib/cadastro-store";
+import { podeEditar, useAuth } from "@/lib/auth";
 import {
   analisarPlanilhaPerdas,
   resumirCoberturaPerdas,
@@ -73,6 +74,8 @@ const schema = z.object({
 const moeda = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 
 function AnalisePerdasPage() {
+  const { profile } = useAuth();
+  const podeAlterar = podeEditar(profile?.role);
   const { lojas, perdas, addPerda, importPerdas, removePerda } = useCadastro();
   const anoAtual = new Date().getFullYear();
   const [form, setForm] = useState({ lojaId: "", mes: "", ano: String(anoAtual), valor: "" });
@@ -93,6 +96,7 @@ function AnalisePerdasPage() {
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (!podeAlterar) return;
     const resultado = schema.safeParse(form);
     if (!resultado.success) {
       setErrors(
@@ -113,6 +117,7 @@ function AnalisePerdasPage() {
   };
 
   const selecionarPlanilha = async (event: ChangeEvent<HTMLInputElement>) => {
+    if (!podeAlterar) return;
     const arquivo = event.target.files?.[0];
     event.target.value = "";
     setPrevia(null);
@@ -155,6 +160,7 @@ function AnalisePerdasPage() {
   };
 
   const carregarPlanilha = () => {
+    if (!podeAlterar) return;
     if (!previa) return;
     setCarregandoDados(true);
     try {
@@ -184,7 +190,11 @@ function AnalisePerdasPage() {
 
       <div className="rounded-lg border border-border bg-card shadow-card">
         <div className="border-b border-border px-5 py-4 font-semibold">Registrar perdas</div>
-        {lojas.length === 0 ? (
+        {!podeAlterar ? (
+          <p className="p-5 text-sm text-muted-foreground">
+            Seu nível de acesso permite consultar os dados, mas não alterá-los.
+          </p>
+        ) : lojas.length === 0 ? (
           <div className="space-y-3 p-5 text-sm text-muted-foreground">
             <p>Cadastre uma loja antes de registrar os valores de perdas.</p>
             <Button asChild variant="outline">
@@ -269,7 +279,7 @@ function AnalisePerdasPage() {
             </div>
           </form>
         )}
-        <div className="space-y-4 border-t border-border p-5">
+        <div className={`space-y-4 border-t border-border p-5 ${podeAlterar ? "" : "hidden"}`}>
           <div className="flex items-start gap-3">
             <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-success/15 text-success">
               <FileSpreadsheet className="size-5" />
@@ -392,7 +402,8 @@ function AnalisePerdasPage() {
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 font-semibold [&::-webkit-details-marker]:hidden">
           <span>Detalhamento dos valores registrados</span>
           <span className="text-xs font-normal text-muted-foreground">
-            {perdas.length} lançamentos · expandir para consultar ou excluir
+            {perdas.length} lançamentos · expandir para consultar
+            {podeAlterar ? " ou excluir" : ""}
           </span>
         </summary>
         <div className="border-t border-border">
@@ -426,6 +437,7 @@ function AnalisePerdasPage() {
                   </TableCell>
                   <TableCell className="pr-5 text-right">
                     <Button
+                      hidden={!podeAlterar}
                       type="button"
                       variant="ghost"
                       size="icon"

@@ -33,6 +33,7 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { ESTADOS, cidadesQuery } from "@/lib/localidades";
 import { useCadastro, type Funcao } from "@/lib/cadastro-store";
+import { podeEditar, useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/cadastro")({
   head: () => ({
@@ -114,9 +115,19 @@ function Field({
   );
 }
 
-function Panel({ title, children }: { title: string; children: React.ReactNode }) {
+function Panel({
+  title,
+  children,
+  oculto = false,
+}: {
+  title: string;
+  children: React.ReactNode;
+  oculto?: boolean;
+}) {
   return (
-    <div className="rounded-lg border border-border bg-card shadow-card">
+    <div
+      className={`rounded-lg border border-border bg-card shadow-card ${oculto ? "hidden" : ""}`}
+    >
       <div className="border-b border-border px-5 py-4 font-semibold">{title}</div>
       {children}
     </div>
@@ -133,6 +144,8 @@ const lojaSchema = z.object({
 });
 
 function LojasTab() {
+  const { profile } = useAuth();
+  const podeAlterar = podeEditar(profile?.role);
   const { lojas, addLoja, updateLoja, removeLoja } = useCadastro();
   const empty = { nome: "", gerente: "", endereco: "", estado: "", cidade: "", telefone: "" };
   const [form, setForm] = useState(empty);
@@ -148,6 +161,7 @@ function LojasTab() {
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
+    if (!podeAlterar) return;
     const r = lojaSchema.safeParse(form);
     if (!r.success) {
       setErrors(Object.fromEntries(r.error.issues.map((i) => [i.path[0], i.message])));
@@ -160,7 +174,7 @@ function LojasTab() {
 
   return (
     <div className="grid gap-6 lg:grid-cols-[360px_1fr]">
-      <Panel title={editId ? "Editar loja" : "Nova loja"}>
+      <Panel oculto={!podeAlterar} title={editId ? "Editar loja" : "Nova loja"}>
         <form onSubmit={submit} className="space-y-4 p-5">
           <Field label="Nome da loja" error={errors["nome"]}>
             <Input
@@ -284,10 +298,12 @@ function LojasTab() {
                 </TableCell>
                 <TableCell className="pr-5 whitespace-nowrap">
                   <Button
+                    hidden={!podeAlterar}
                     variant="ghost"
                     size="icon"
                     aria-label={`Editar loja ${l.nome}`}
                     onClick={() => {
+                      if (!podeAlterar) return;
                       setEditId(l.id);
                       setErrors({});
                       setForm({
@@ -303,10 +319,12 @@ function LojasTab() {
                     <Pencil className="text-primary" />
                   </Button>
                   <Button
+                    hidden={!podeAlterar}
                     variant="ghost"
                     size="icon"
                     aria-label={`Excluir loja ${l.nome}`}
                     onClick={() => {
+                      if (!podeAlterar) return;
                       if (confirm(`Excluir a loja ${l.nome} e sua equipe?`)) {
                         removeLoja(l.id);
                         if (editId === l.id) reset();
@@ -334,6 +352,8 @@ const pessoaSchema = z.object({
 });
 
 function PessoasTab({ funcao, label, plural }: { funcao: Funcao; label: string; plural: string }) {
+  const { profile } = useAuth();
+  const podeAlterar = podeEditar(profile?.role);
   const { lojas, pessoas, addPessoa, removePessoa } = useCadastro();
   const empty = { nome: "", matricula: "", telefone: "", lojaId: "", turno: "" };
   const [form, setForm] = useState(empty);
@@ -349,6 +369,7 @@ function PessoasTab({ funcao, label, plural }: { funcao: Funcao; label: string; 
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
+    if (!podeAlterar) return;
     const r = pessoaSchema.safeParse(form);
     if (!r.success) {
       setErrors(Object.fromEntries(r.error.issues.map((i) => [i.path[0], i.message])));
@@ -361,7 +382,7 @@ function PessoasTab({ funcao, label, plural }: { funcao: Funcao; label: string; 
 
   return (
     <div className="grid gap-6 lg:grid-cols-[360px_1fr]">
-      <Panel title={`Novo ${label.toLowerCase()}`}>
+      <Panel oculto={!podeAlterar} title={`Novo ${label.toLowerCase()}`}>
         <form onSubmit={submit} className="space-y-4 p-5">
           <Field label="Nome completo" error={errors["nome"]}>
             <Input value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} />
@@ -460,10 +481,13 @@ function PessoasTab({ funcao, label, plural }: { funcao: Funcao; label: string; 
                 </TableCell>
                 <TableCell className="pr-5">
                   <Button
+                    hidden={!podeAlterar}
                     variant="ghost"
                     size="icon"
                     aria-label={`Excluir ${p.nome}`}
-                    onClick={() => confirm(`Excluir ${p.nome}?`) && removePessoa(p.id)}
+                    onClick={() => {
+                      if (podeAlterar && confirm(`Excluir ${p.nome}?`)) removePessoa(p.id);
+                    }}
                   >
                     <Trash2 className="text-destructive" />
                   </Button>
@@ -486,6 +510,8 @@ const empresaSchema = z.object({
 });
 
 function EmpresasTab() {
+  const { profile } = useAuth();
+  const podeAlterar = podeEditar(profile?.role);
   const { empresas, supervisores, addEmpresa, removeEmpresa } = useCadastro();
   const vazio = { nome: "", cnpj: "" };
   const [form, setForm] = useState(vazio);
@@ -494,6 +520,7 @@ function EmpresasTab() {
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
+    if (!podeAlterar) return;
     const resultado = empresaSchema.safeParse(form);
     if (!resultado.success) {
       setErros(
@@ -514,7 +541,7 @@ function EmpresasTab() {
 
   return (
     <div className="grid gap-6 lg:grid-cols-[360px_1fr]">
-      <Panel title="Cadastro de empresa">
+      <Panel oculto={!podeAlterar} title="Cadastro de empresa">
         <form onSubmit={submit} className="space-y-4 p-5">
           <Field label="Nome da empresa" error={erros["nome"]}>
             <Input
@@ -556,12 +583,14 @@ function EmpresasTab() {
                   <TableCell className="font-mono text-xs">{empresa.cnpj}</TableCell>
                   <TableCell className="pr-5">
                     <Button
+                      hidden={!podeAlterar}
                       variant="ghost"
                       size="icon"
                       aria-label={`Excluir ${empresa.nome}`}
                       disabled={emUso}
                       title={emUso ? "Há supervisores vinculados a esta empresa." : undefined}
                       onClick={() => {
+                        if (!podeAlterar) return;
                         if (confirm(`Excluir a empresa ${empresa.nome}?`))
                           removeEmpresa(empresa.id);
                       }}
@@ -587,6 +616,8 @@ const supervisorSchema = z.object({
 });
 
 function SupervisoresTab() {
+  const { profile } = useAuth();
+  const podeAlterar = podeEditar(profile?.role);
   const { empresas, supervisores, addSupervisor, removeSupervisor } = useCadastro();
   const vazio = { nome: "", tipo: "", regiao: "", empresaId: "" };
   const [form, setForm] = useState(vazio);
@@ -594,6 +625,7 @@ function SupervisoresTab() {
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
+    if (!podeAlterar) return;
     const resultado = supervisorSchema.safeParse(form);
     if (!resultado.success) {
       setErros(
@@ -622,7 +654,7 @@ function SupervisoresTab() {
 
   return (
     <div className="grid gap-6 lg:grid-cols-[360px_1fr]">
-      <Panel title="Cadastro de supervisores">
+      <Panel oculto={!podeAlterar} title="Cadastro de supervisores">
         <form onSubmit={submit} className="space-y-4 p-5">
           <Field label="Vínculo" error={erros["tipo"]}>
             <Select
@@ -718,10 +750,12 @@ function SupervisoresTab() {
                 </TableCell>
                 <TableCell className="pr-5">
                   <Button
+                    hidden={!podeAlterar}
                     variant="ghost"
                     size="icon"
                     aria-label={`Excluir ${supervisor.nome}`}
                     onClick={() => {
+                      if (!podeAlterar) return;
                       if (confirm(`Excluir o cadastro de ${supervisor.nome}?`))
                         removeSupervisor(supervisor.id);
                     }}

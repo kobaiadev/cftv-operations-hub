@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from "react";
 import type { TipoSupervisor } from "@/lib/cadastro-store";
+import { registrarEstadoApp, salvarEstadoApp } from "@/lib/app-state";
 
 export type FotoSupervisao = {
   nome: string;
@@ -25,6 +26,7 @@ const vazio: Supervisao[] = [];
 const listeners = new Set<() => void>();
 let supervisoes: Supervisao[] = [];
 let carregado = false;
+let persistVersion = 0;
 
 function carregar() {
   if (carregado || typeof window === "undefined") return;
@@ -43,10 +45,52 @@ function carregar() {
 }
 
 function publicar(proximas: Supervisao[]) {
-  localStorage.setItem(KEY, JSON.stringify(proximas));
+  const anteriores = supervisoes;
+  const versao = ++persistVersion;
   supervisoes = proximas;
   listeners.forEach((listener) => listener());
+  void salvarEstadoApp("supervisoes", proximas).catch((error: unknown) => {
+    console.error("Não foi possível persistir os registros de supervisão.", error);
+    if (persistVersion === versao) {
+      supervisoes = anteriores;
+      listeners.forEach((listener) => listener());
+    }
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("app-state-error", {
+          detail: error instanceof Error ? error.message : "Falha ao salvar supervisões.",
+        }),
+      );
+    }
+  });
 }
+
+registrarEstadoApp("supervisoes", {
+  snapshot: () => {
+    carregar();
+    return supervisoes;
+  },
+  legacySnapshot: () => {
+    carregar();
+    return typeof window !== "undefined" && localStorage.getItem(KEY) ? supervisoes : null;
+  },
+  emptySnapshot: () => [],
+  merge: (remote, legacy) => {
+    const remoto = remote as Supervisao[];
+    const legado = legacy as Supervisao[];
+    const idsRemotos = new Set(remoto.map((registro) => registro.id));
+    return [...remoto, ...legado.filter((registro) => !idsRemotos.has(registro.id))];
+  },
+  hydrate: (data) => {
+    if (!Array.isArray(data)) {
+      throw new Error("Os registros remotos de supervisão possuem formato inválido.");
+    }
+    supervisoes = data as Supervisao[];
+    carregado = true;
+    listeners.forEach((listener) => listener());
+  },
+  legacyKey: KEY,
+});
 
 const novoId = () =>
   globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;

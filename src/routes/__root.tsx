@@ -2,8 +2,10 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   Outlet,
   Link,
+  Navigate,
   createRootRouteWithContext,
   useRouter,
+  useRouterState,
   HeadContent,
   Scripts,
   type ErrorComponentProps,
@@ -14,6 +16,8 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { AuthProvider, useAuth } from "@/lib/auth";
+import { obterClienteSupabase } from "@/lib/supabase";
 
 function NotFoundComponent() {
   return (
@@ -136,23 +140,68 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-      <SidebarProvider>
-        <div className="flex min-h-screen w-full">
-          <AppSidebar />
-          <div className="flex min-w-0 flex-1 flex-col">
-            <header className="sticky top-0 z-10 flex h-14 items-center gap-3 border-b-2 border-primary/60 bg-background/80 px-4 backdrop-blur">
-              <SidebarTrigger />
-              <span className="text-sm text-muted-foreground">
-                Sistema de Controle de OS e Reservas CFTV
-              </span>
-            </header>
-            <main className="flex-1 p-4 md:p-6 lg:p-8">
-              <Outlet />
-            </main>
-          </div>
-        </div>
-      </SidebarProvider>
+      <AuthProvider>
+        <AuthenticatedRoot />
+      </AuthProvider>
     </QueryClientProvider>
+  );
+}
+
+function AuthenticatedRoot() {
+  const { session, profile, loading, error } = useAuth();
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+
+  if (pathname === "/login") {
+    return (
+      <SidebarProvider>
+        <Outlet />
+      </SidebarProvider>
+    );
+  }
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#17365d] text-white">
+        <p className="text-sm">Verificando acesso seguro...</p>
+      </div>
+    );
+  }
+  if (!session) return <Navigate to="/login" replace />;
+  if (!profile) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background px-4">
+        <div className="max-w-md rounded-xl border border-border bg-card p-6 text-center shadow-card">
+          <h1 className="text-lg font-semibold">Acesso não autorizado</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {error ?? "Sua conta não possui um nível de acesso atribuído."}
+          </p>
+          <button
+            type="button"
+            className="mt-5 rounded-md bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground"
+            onClick={() => void obterClienteSupabase().auth.signOut()}
+          >
+            Sair
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <SidebarProvider>
+      <div className="flex min-h-screen w-full">
+        <AppSidebar />
+        <div className="flex min-w-0 flex-1 flex-col">
+          <header className="sticky top-0 z-10 flex h-14 items-center gap-3 border-b-2 border-primary/60 bg-background/80 px-4 backdrop-blur">
+            <SidebarTrigger />
+            <span className="text-sm text-muted-foreground">
+              Sistema de Controle de OS e Reservas CFTV
+            </span>
+          </header>
+          <main className="flex-1 p-4 md:p-6 lg:p-8">
+            <Outlet />
+          </main>
+        </div>
+      </div>
+    </SidebarProvider>
   );
 }

@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from "react";
+import { registrarEstadoApp, salvarEstadoApp } from "@/lib/app-state";
 
 export type Loja = {
   id: string;
@@ -87,6 +88,7 @@ const seed: State = {
 
 let state: State = seed;
 let loaded = false;
+let persistVersion = 0;
 const listeners = new Set<() => void>();
 
 function load() {
@@ -109,10 +111,72 @@ function load() {
   }
 }
 function set(next: State) {
-  localStorage.setItem(KEY, JSON.stringify(next));
+  const anterior = state;
+  const versao = ++persistVersion;
   state = next;
   listeners.forEach((l) => l());
+  void salvarEstadoApp("cadastro", next).catch((error: unknown) => {
+    console.error("Não foi possível persistir os dados de cadastro.", error);
+    if (persistVersion === versao) {
+      state = anterior;
+      listeners.forEach((listener) => listener());
+    }
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("app-state-error", {
+          detail: error instanceof Error ? error.message : "Falha ao salvar os cadastros.",
+        }),
+      );
+    }
+  });
 }
+
+registrarEstadoApp("cadastro", {
+  snapshot: () => {
+    load();
+    return state;
+  },
+  legacySnapshot: () => {
+    load();
+    return typeof window !== "undefined" && localStorage.getItem(KEY) ? state : null;
+  },
+  emptySnapshot: () =>
+    ({ lojas: [], pessoas: [], perdas: [], empresas: [], supervisores: [] }) satisfies State,
+  merge: (remote, legacy) => {
+    const remoto = remote as State;
+    const legado = legacy as State;
+    const mesclarPorId = <T extends { id: string }>(itensRemotos: T[], itensLocais: T[]) => {
+      const idsRemotos = new Set(itensRemotos.map((item) => item.id));
+      return [...itensRemotos, ...itensLocais.filter((item) => !idsRemotos.has(item.id))];
+    };
+    return {
+      lojas: mesclarPorId(remoto.lojas, legado.lojas),
+      pessoas: mesclarPorId(remoto.pessoas, legado.pessoas),
+      perdas: mesclarPorId(remoto.perdas, legado.perdas),
+      empresas: mesclarPorId(remoto.empresas, legado.empresas),
+      supervisores: mesclarPorId(remoto.supervisores, legado.supervisores),
+    } satisfies State;
+  },
+  hydrate: (data) => {
+    if (!data || typeof data !== "object") {
+      throw new Error("Os dados remotos de cadastro possuem formato inválido.");
+    }
+    const saved = data as Partial<State>;
+    if (
+      !Array.isArray(saved.lojas) ||
+      !Array.isArray(saved.pessoas) ||
+      !Array.isArray(saved.perdas) ||
+      !Array.isArray(saved.empresas) ||
+      !Array.isArray(saved.supervisores)
+    ) {
+      throw new Error("Os dados remotos de cadastro possuem formato inválido.");
+    }
+    state = saved as State;
+    loaded = true;
+    listeners.forEach((listener) => listener());
+  },
+  legacyKey: KEY,
+});
 const uid = () => Math.random().toString(36).slice(2, 10);
 
 export function useCadastro() {

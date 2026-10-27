@@ -56,6 +56,7 @@ import {
 } from "@/lib/os-files";
 import { formatarTextoFormal, limparTextoCapturado } from "@/lib/os-text";
 import { Paperclip } from "lucide-react";
+import { podeBaixar, podeEditar, useAuth } from "@/lib/auth";
 
 const extraVazio = () =>
   Array.from({ length: 4 }, () => ({ file: null as File | null, url: "", lendo: false }));
@@ -137,6 +138,9 @@ function UploadBox({
 }
 
 function OrdensPage() {
+  const { profile } = useAuth();
+  const podeAlterar = podeEditar(profile?.role);
+  const podeExportar = podeBaixar(profile?.role);
   const { ordens, addOS, removeOS, updateOS } = useOS();
   const { lojas } = useCadastro();
   const nomesLojas = lojas.map((l) => l.nome);
@@ -424,6 +428,7 @@ function OrdensPage() {
   };
 
   const gerarOS = async () => {
+    if (!podeAlterar) return;
     if (salvandoOS) return;
     const dadosReconhecidos = interpretarTexto(
       Object.values(textosOcr.current).join("\n"),
@@ -563,6 +568,7 @@ function OrdensPage() {
   };
 
   const abrirEdicao = async (os: OS) => {
+    if (!podeAlterar) return;
     setEditando({ ...os });
     setAnexosEditando([]);
     setCarregandoEdicao(true);
@@ -579,6 +585,7 @@ function OrdensPage() {
   };
 
   const baixarPdf = async (os: OS) => {
+    if (!podeExportar) return;
     setBaixandoPdf(os.id);
     try {
       await baixarPdfOS(os);
@@ -626,6 +633,7 @@ function OrdensPage() {
   };
 
   const baixarAnexo = (osId: string, anexo: Anexo) => {
+    if (!podeExportar) return;
     try {
       const link = document.createElement("a");
       link.href = anexo.dataUrl;
@@ -693,6 +701,7 @@ function OrdensPage() {
 
   const salvarEdicao = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (!podeAlterar) return;
     if (!editando) return;
     if (!editando.ocorrencia.trim()) {
       toast.error("Informe o tipo de ocorrência.");
@@ -746,6 +755,7 @@ function OrdensPage() {
   };
 
   const excluirOrdem = async (os: OS) => {
+    if (!podeAlterar) return;
     if (
       !window.confirm(
         `Tem certeza de que deseja excluir a ${os.id}? Esta ação não pode ser desfeita.`,
@@ -788,7 +798,9 @@ function OrdensPage() {
         </p>
       </div>
 
-      <div className="rounded-lg border border-border bg-card p-5 shadow-card">
+      <div
+        className={`rounded-lg border border-border bg-card p-5 shadow-card ${podeAlterar ? "" : "hidden"}`}
+      >
         <h2 className="mb-1 flex items-center gap-2 font-semibold">
           <ScanText className="size-4 text-primary" /> Nova OS a partir de print
         </h2>
@@ -1184,7 +1196,8 @@ function OrdensPage() {
             <div>
               <h2 className="font-semibold">Ordens de Serviço Registradas</h2>
               <p className="mt-1 text-xs text-muted-foreground">
-                Consulte, pesquise, edite e gerencie os registros da operação.
+                Consulte e pesquise os registros da operação.
+                {podeAlterar && " Edite ou gerencie os registros conforme necessário."}
               </p>
             </div>
             <span className="text-xs text-muted-foreground">
@@ -1352,7 +1365,7 @@ function OrdensPage() {
                       disabled={carregandoAnexosOS !== null}
                       onClick={() => void alternarAnexos(o)}
                       aria-label={`${ordensComAnexosAbertos.has(o.id) ? "Ocultar" : "Exibir"} anexos da ${o.id}`}
-                      title="Exibir ou baixar anexos individualmente"
+                      title="Exibir anexos da ordem de serviço"
                     >
                       {carregandoAnexosOS === o.id ? (
                         <Loader2 className="animate-spin" />
@@ -1361,6 +1374,7 @@ function OrdensPage() {
                       )}
                     </Button>
                     <Button
+                      hidden={!podeExportar}
                       type="button"
                       variant="ghost"
                       size="icon"
@@ -1372,6 +1386,7 @@ function OrdensPage() {
                       {baixandoPdf === o.id ? <Loader2 className="animate-spin" /> : <Download />}
                     </Button>
                     <Button
+                      hidden={!podeAlterar}
                       type="button"
                       variant="outline"
                       size="sm"
@@ -1381,6 +1396,7 @@ function OrdensPage() {
                       <Pencil /> Editar
                     </Button>
                     <Button
+                      hidden={!podeAlterar}
                       type="button"
                       variant="ghost"
                       size="icon"
@@ -1411,6 +1427,7 @@ function OrdensPage() {
                               {anexo.nome}
                             </p>
                             <Button
+                              hidden={!podeExportar}
                               type="button"
                               variant="outline"
                               size="sm"

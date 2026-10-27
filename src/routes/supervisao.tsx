@@ -28,6 +28,7 @@ import {
 } from "@/lib/supervisao-fotos";
 import { useSupervisoes, type FotoSupervisao } from "@/lib/supervisao-store";
 import { useCadastro, type TipoSupervisor } from "@/lib/cadastro-store";
+import { podeEditar, useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/supervisao")({
   head: () => ({
@@ -65,6 +66,8 @@ function RelogioAtual() {
 }
 
 function SupervisaoPage() {
+  const { profile } = useAuth();
+  const podeAlterar = podeEditar(profile?.role);
   const { supervisoes, addSupervisao, removeSupervisao } = useSupervisoes();
   const { empresas, supervisores } = useCadastro();
   const [nome, setNome] = useState("");
@@ -124,6 +127,7 @@ function SupervisaoPage() {
   };
 
   const salvar = async () => {
+    if (!podeAlterar) return;
     if (!nome.trim()) {
       toast.error("Informe o nome do supervisor.");
       return;
@@ -190,6 +194,7 @@ function SupervisaoPage() {
   };
 
   const excluir = async (id: string, supervisor: string) => {
+    if (!podeAlterar) return;
     if (!window.confirm(`Excluir o registro de supervisão de ${supervisor}?`)) return;
     try {
       await removerFotosSupervisao(id);
@@ -210,7 +215,9 @@ function SupervisaoPage() {
         </p>
       </header>
 
-      <section className="rounded-lg border border-border bg-card p-5 shadow-card">
+      <section
+        className={`rounded-lg border border-border bg-card p-5 shadow-card ${podeAlterar ? "" : "hidden"}`}
+      >
         <h2 className="mb-4 flex items-center gap-2 font-semibold">
           <UsersRound className="size-4 text-primary" /> Novo registro de supervisão
         </h2>
@@ -405,6 +412,7 @@ function SupervisaoPage() {
                     )}
                   </div>
                   <Button
+                    hidden={!podeAlterar}
                     variant="ghost"
                     size="icon"
                     aria-label={`Excluir registro de ${registro.supervisorNome}`}

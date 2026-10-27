@@ -13,9 +13,11 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AnalisePerdasRouteImport } from './routes/analise-perdas'
 import { Route as CadastroRouteImport } from './routes/cadastro'
 import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as OrdensRouteImport } from './routes/ordens'
 import { Route as ReservasRouteImport } from './routes/reservas'
 import { Route as SupervisaoRouteImport } from './routes/supervisao'
+import { Route as UsuariosRouteImport } from './routes/usuarios'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -37,6 +39,11 @@ const ConfiguracoesRoute = ConfiguracoesRouteImport.update({
   path: '/configuracoes',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OrdensRoute = OrdensRouteImport.update({
   id: '/ordens',
   path: '/ordens',
@@ -52,24 +59,33 @@ const SupervisaoRoute = SupervisaoRouteImport.update({
   path: '/supervisao',
   getParentRoute: () => rootRouteImport,
 } as any)
+const UsuariosRoute = UsuariosRouteImport.update({
+  id: '/usuarios',
+  path: '/usuarios',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/analise-perdas': typeof AnalisePerdasRoute
   '/cadastro': typeof CadastroRoute
   '/configuracoes': typeof ConfiguracoesRoute
+  '/login': typeof LoginRoute
   '/ordens': typeof OrdensRoute
   '/reservas': typeof ReservasRoute
   '/supervisao': typeof SupervisaoRoute
+  '/usuarios': typeof UsuariosRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/analise-perdas': typeof AnalisePerdasRoute
   '/cadastro': typeof CadastroRoute
   '/configuracoes': typeof ConfiguracoesRoute
+  '/login': typeof LoginRoute
   '/ordens': typeof OrdensRoute
   '/reservas': typeof ReservasRoute
   '/supervisao': typeof SupervisaoRoute
+  '/usuarios': typeof UsuariosRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -77,9 +93,11 @@ export interface FileRoutesById {
   '/analise-perdas': typeof AnalisePerdasRoute
   '/cadastro': typeof CadastroRoute
   '/configuracoes': typeof ConfiguracoesRoute
+  '/login': typeof LoginRoute
   '/ordens': typeof OrdensRoute
   '/reservas': typeof ReservasRoute
   '/supervisao': typeof SupervisaoRoute
+  '/usuarios': typeof UsuariosRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -88,27 +106,33 @@ export interface FileRouteTypes {
     | '/analise-perdas'
     | '/cadastro'
     | '/configuracoes'
+    | '/login'
     | '/ordens'
     | '/reservas'
     | '/supervisao'
+    | '/usuarios'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/analise-perdas'
     | '/cadastro'
     | '/configuracoes'
+    | '/login'
     | '/ordens'
     | '/reservas'
     | '/supervisao'
+    | '/usuarios'
   id:
     | '__root__'
     | '/'
     | '/analise-perdas'
     | '/cadastro'
     | '/configuracoes'
+    | '/login'
     | '/ordens'
     | '/reservas'
     | '/supervisao'
+    | '/usuarios'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -116,9 +140,11 @@ export interface RootRouteChildren {
   AnalisePerdasRoute: typeof AnalisePerdasRoute
   CadastroRoute: typeof CadastroRoute
   ConfiguracoesRoute: typeof ConfiguracoesRoute
+  LoginRoute: typeof LoginRoute
   OrdensRoute: typeof OrdensRoute
   ReservasRoute: typeof ReservasRoute
   SupervisaoRoute: typeof SupervisaoRoute
+  UsuariosRoute: typeof UsuariosRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -151,6 +177,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ConfiguracoesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/ordens': {
       id: '/ordens'
       path: '/ordens'
@@ -172,6 +205,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SupervisaoRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/usuarios': {
+      id: '/usuarios'
+      path: '/usuarios'
+      fullPath: '/usuarios'
+      preLoaderRoute: typeof UsuariosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -180,9 +220,11 @@ const rootRouteChildren: RootRouteChildren = {
   AnalisePerdasRoute: AnalisePerdasRoute,
   CadastroRoute: CadastroRoute,
   ConfiguracoesRoute: ConfiguracoesRoute,
+  LoginRoute: LoginRoute,
   OrdensRoute: OrdensRoute,
   ReservasRoute: ReservasRoute,
   SupervisaoRoute: SupervisaoRoute,
+  UsuariosRoute: UsuariosRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

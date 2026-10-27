@@ -8,6 +8,8 @@ import {
   UserPlus,
   ChartNoAxesCombined,
   ClipboardCheck,
+  LogOut,
+  UserCog,
 } from "lucide-react";
 import {
   Sidebar,
@@ -21,6 +23,8 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import { useAuth, ehAdministrador, NIVEIS_ACESSO } from "@/lib/auth";
+import { obterClienteSupabase } from "@/lib/supabase";
 
 const items = [
   { title: "Análise de Perdas", url: "/analise-perdas", icon: ChartNoAxesCombined },
@@ -30,10 +34,16 @@ const items = [
   { title: "Supervisão", url: "/supervisao", icon: ClipboardCheck },
   { title: "Cadastro", url: "/cadastro", icon: UserPlus },
   { title: "Configurações", url: "/configuracoes", icon: Settings },
+  { title: "Usuários do Sistema", url: "/usuarios", icon: UserCog, adminOnly: true },
 ] as const;
 
 export function AppSidebar() {
   const path = useRouterState({ select: (r) => r.location.pathname });
+  const { profile } = useAuth();
+  const visibleItems = items.filter(
+    (item) => !("adminOnly" in item) || ehAdministrador(profile?.role),
+  );
+  const roleLabel = NIVEIS_ACESSO.find((item) => item.value === profile?.role)?.label ?? "";
 
   return (
     <Sidebar collapsible="icon">
@@ -53,7 +63,7 @@ export function AppSidebar() {
           <SidebarGroupLabel>Operação</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {items.map((item) => (
+              {visibleItems.map((item) => (
                 <SidebarMenuItem key={item.url}>
                   <SidebarMenuButton asChild isActive={path === item.url} tooltip={item.title}>
                     <Link to={item.url}>
@@ -70,12 +80,25 @@ export function AppSidebar() {
       <SidebarFooter className="border-t border-sidebar-border">
         <div className="flex items-center gap-2 px-1 py-1">
           <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-secondary text-xs font-semibold">
-            DS
+            {profile?.display_name
+              .split(/\s+/)
+              .slice(0, 2)
+              .map((parte) => parte[0]?.toLocaleUpperCase("pt-BR"))
+              .join("")}
           </div>
-          <div className="flex flex-col leading-tight group-data-[collapsible=icon]:hidden">
-            <span className="text-sm font-medium">Daniel Silva</span>
-            <span className="text-xs text-muted-foreground">Analista PP</span>
+          <div className="flex min-w-0 flex-1 flex-col leading-tight group-data-[collapsible=icon]:hidden">
+            <span className="truncate text-sm font-medium">{profile?.display_name}</span>
+            <span className="truncate text-xs text-muted-foreground">{roleLabel}</span>
           </div>
+          <button
+            type="button"
+            className="flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive group-data-[collapsible=icon]:hidden"
+            aria-label="Sair do sistema"
+            title="Sair do sistema"
+            onClick={() => void obterClienteSupabase().auth.signOut()}
+          >
+            <LogOut className="size-4" />
+          </button>
         </div>
       </SidebarFooter>
     </Sidebar>

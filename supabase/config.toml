@@ -1,5 +1,1 @@
-[functions.manage-users]
-verify_jwt = true
-
-[functions.view-attachment]
-verify_jwt = true
+project_id = "csryllzvxvjqvflntmye"

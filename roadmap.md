@@ -1,4 +1,4 @@
-# Authentication
-- [ ] Implement email/password signup and password recovery.
-- [ ] Protect private routes while preserving existing assigned access levels.
-- [ ] Validate authentication flows and report external configuration limitations.
+# Login repair
+- [ ] Remove incomplete public signup and password-recovery pages.
+- [ ] Replace login with the requested Nagumo design and sign-in feedback.
+- [ ] Verify private access, route removal, tests and lint; report unavailable authenticated checks.

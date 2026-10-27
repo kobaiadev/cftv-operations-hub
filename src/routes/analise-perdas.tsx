@@ -34,7 +34,10 @@ export const Route = createFileRoute("/analise-perdas")({
     meta: [
       { title: "Análise de Perdas — Controle PP" },
       { property: "og:title", content: "Análise de Perdas — Controle PP" },
-      { property: "og:description", content: "Registre e consulte os valores mensais de perdas por loja." },
+      {
+        property: "og:description",
+        content: "Registre e consulte os valores mensais de perdas por loja.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       {

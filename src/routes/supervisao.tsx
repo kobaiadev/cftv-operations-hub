@@ -35,7 +35,10 @@ export const Route = createFileRoute("/supervisao")({
     meta: [
       { title: "Supervisão — Controle PP" },
       { property: "og:title", content: "Supervisão — Controle PP" },
-      { property: "og:description", content: "Registre visitas de supervisão com fotos, data, hora e localização." },
+      {
+        property: "og:description",
+        content: "Registre visitas de supervisão com fotos, data, hora e localização.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       {

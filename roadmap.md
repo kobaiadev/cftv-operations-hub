@@ -1,5 +1,5 @@
 # Login repair
-- [ ] Verify the authentication context survives live preview updates without blanking login.
+- [x] Verify the authentication context survives live preview updates without blanking login.
 - [x] Remove incomplete public signup and password-recovery pages.
 - [x] Replace login with the requested Nagumo design and sign-in feedback.
 - [x] Verify signed-out private access, route removal, tests and lint; automatic build passes. Full lint retains pre-existing findings outside this change.

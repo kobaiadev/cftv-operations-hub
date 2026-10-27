@@ -1,7 +1,13 @@
 import type { OS } from "@/lib/os-store";
 import { lerAnexos } from "@/lib/os-files";
 import { limparTextoCapturado } from "@/lib/os-text";
-import { criarTemplateOS, normalizarTextoRelatorio, tituloFormalAnexo, NAVY, GRAY } from "@/lib/os-pdf-template";
+import {
+  criarTemplateOS,
+  normalizarTextoRelatorio,
+  tituloFormalAnexo,
+  NAVY,
+  GRAY,
+} from "@/lib/os-pdf-template";
 export { normalizarTextoRelatorio } from "@/lib/os-pdf-template";
 
 const SEV: Record<string, [number, number, number]> = {
@@ -212,7 +218,6 @@ const ROTULOS_RELATORIO = [
   "GLPI/TI",
 ];
 
-
 function removerMetadados(texto: string) {
   let dentroDeSecao = false;
   return texto
@@ -414,18 +419,24 @@ export async function baixarPdfReparo(
   const template = await criarTemplateOS(doc, sr.id, "RELATÓRIO DE SOLICITAÇÃO DE REPARO");
   template.identificacao();
   template.secao("1. DADOS GERAIS");
-  template.linhasGrade([
-    ["Nº da Solicitação", sr.id],
-    ["Data/Hora", new Date(sr.created_at).toLocaleString("pt-BR")],
-    ["Loja", sr.loja],
-    ["Nº Solicitação GLPI", sr.glpi_numero],
-  ], 2);
+  template.linhasGrade(
+    [
+      ["Nº da Solicitação", sr.id],
+      ["Data/Hora", new Date(sr.created_at).toLocaleString("pt-BR")],
+      ["Loja", sr.loja],
+      ["Nº Solicitação GLPI", sr.glpi_numero],
+    ],
+    2,
+  );
   template.secao("2. ENVOLVIDOS");
-  template.linhasGrade([
-    ["Gerente da loja", sr.gerente],
-    ["Empresa responsável pelo reparo", sr.empresa_responsavel],
-    ["Solicitante", sr.solicitante],
-  ], 3);
+  template.linhasGrade(
+    [
+      ["Gerente da loja", sr.gerente],
+      ["Empresa responsável pelo reparo", sr.empresa_responsavel],
+      ["Solicitante", sr.solicitante],
+    ],
+    3,
+  );
   template.secao("3. DESCRIÇÃO DA SOLICITAÇÃO");
   template.paragrafo(sr.descricao || "Descrição não informada.", false, 3);
   template.secao("4. PRINTS E DOCUMENTOS VINCULADOS");

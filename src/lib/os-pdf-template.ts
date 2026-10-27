@@ -8,7 +8,12 @@ export const CYAN: [number, number, number] = [92, 196, 214];
 export const GRAY: [number, number, number] = [95, 105, 120];
 export const LIGHT: [number, number, number] = [246, 248, 251];
 
-const normalizarChave = (texto: string) => texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR").replace(/[^a-z0-9]/g, "");
+const normalizarChave = (texto: string) =>
+  texto
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLocaleLowerCase("pt-BR")
+    .replace(/[^a-z0-9]/g, "");
 
 const ROTULOS_DESTACADOS = [
   "fiscal",
@@ -38,7 +43,8 @@ export function normalizarTextoRelatorio(texto: string): string {
     .join("|");
   const antesDoRotulo = new RegExp(`\\s+(?=(?:${rotulos})\\s*:)`, "giu");
 
-  return texto.normalize("NFC")
+  return texto
+    .normalize("NFC")
     .replace(/#\s*ô\s*h\s*o\s*r\s*á\s*r\s*i\s*o\s*:?/giu, "HORÁRIO:")
     .replace(/#\s*h\s*o\s*r\s*a\s*r\s*i\s*o\s*:?/giu, "HORÁRIO:")
     .replace(antesDoRotulo, "\n")
@@ -48,7 +54,6 @@ export function normalizarTextoRelatorio(texto: string): string {
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 }
-
 
 export function tituloFormalAnexo(rotulo: string) {
   const chave = normalizarChave(rotulo);
@@ -74,7 +79,13 @@ async function carregar(src: string) {
   return img;
 }
 
-export type AnexoRelatorio = { rotulo: string; nome?: string; tipo: string; dataUrl: string; detalhes?: string };
+export type AnexoRelatorio = {
+  rotulo: string;
+  nome?: string;
+  tipo: string;
+  dataUrl: string;
+  detalhes?: string;
+};
 
 /** Única estrutura de impressão para OS e Reparo: cabeçalho, grids, relato, anexos e rodapé. */
 export async function criarTemplateOS(doc: jsPDF, id: string, titulo: string) {
@@ -164,8 +175,9 @@ export async function criarTemplateOS(doc: jsPDF, id: string, titulo: string) {
       const [rotulo, valorBruto] = par;
       const prefixo = `${rotulo}: `;
       const valor =
-        limparTextoCapturado(`${prefixo}${valorBruto.normalize("NFC")}`).slice(prefixo.length).trim() ||
-        "Não informado";
+        limparTextoCapturado(`${prefixo}${valorBruto.normalize("NFC")}`)
+          .slice(prefixo.length)
+          .trim() || "Não informado";
       doc.setFont("helvetica", "normal");
       doc.setFontSize(9.5);
       const textoLinhas = doc.splitTextToSize(valor, CW - 10) as string[];
@@ -377,5 +389,20 @@ export async function criarTemplateOS(doc: jsPDF, id: string, titulo: string) {
       y += 10;
     }
   };
-  return { secao, linhas, linhasGrade, paragrafo, renderizarAnexos, identificacao, garantir, rodape, W, M, getY: () => y, avancar: (altura: number) => { y += altura; } };
+  return {
+    secao,
+    linhas,
+    linhasGrade,
+    paragrafo,
+    renderizarAnexos,
+    identificacao,
+    garantir,
+    rodape,
+    W,
+    M,
+    getY: () => y,
+    avancar: (altura: number) => {
+      y += altura;
+    },
+  };
 }

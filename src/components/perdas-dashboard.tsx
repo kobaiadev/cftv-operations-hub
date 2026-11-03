@@ -27,6 +27,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { Loja, Perda } from "@/lib/cadastro-store";
+import {
+  agruparLojas,
+  criarDadosComparativoLojas,
+  criarDadosParticipacao,
+  obterLojasParaGrafico,
+  unificarPerdasPorLoja,
+} from "@/lib/perdas-dashboard-data";
 
 const NOMES_MESES = [
   "Janeiro",
@@ -97,13 +104,18 @@ function Painel({
 export function PerdasDashboard({ perdas, lojas }: { perdas: Perda[]; lojas: Loja[] }) {
   const [lojaSelecionada, setLojaSelecionada] = useState("todas");
   const [anoSelecionado, setAnoSelecionado] = useState("todos");
-  const lojaPorId = useMemo(() => new Map(lojas.map((loja) => [loja.id, loja.nome])), [lojas]);
+  const lojasAgrupadas = useMemo(() => agruparLojas(lojas), [lojas]);
+  const perdasUnificadas = useMemo(() => unificarPerdasPorLoja(perdas, lojas), [perdas, lojas]);
+  const lojaPorId = useMemo(
+    () => new Map(lojasAgrupadas.map((loja) => [loja.chave, loja.nome])),
+    [lojasAgrupadas],
+  );
   const anos = useMemo(
-    () => [...new Set(perdas.map((perda) => perda.ano))].sort((a, b) => a - b),
-    [perdas],
+    () => [...new Set(perdasUnificadas.map((perda) => perda.ano))].sort((a, b) => a - b),
+    [perdasUnificadas],
   );
   const anosParaFiltro = anos.map(String);
-  const perdasDaLoja = perdas.filter(
+  const perdasDaLoja = perdasUnificadas.filter(
     (perda) => lojaSelecionada === "todas" || perda.lojaId === lojaSelecionada,
   );
   const perdasFiltradas = perdasDaLoja.filter(
@@ -112,7 +124,7 @@ export function PerdasDashboard({ perdas, lojas }: { perdas: Perda[]; lojas: Loj
   const total = perdasFiltradas.reduce((soma, perda) => soma + perda.valor, 0);
   const periodos = new Set(perdasFiltradas.map((perda) => `${perda.ano}-${perda.mes}`));
   const mediaMensal = periodos.size > 0 ? total / periodos.size : 0;
-  const totalRede = perdas
+  const totalRede = perdasUnificadas
     .filter((perda) => anoSelecionado === "todos" || perda.ano === Number(anoSelecionado))
     .reduce((soma, perda) => soma + perda.valor, 0);
   const impactoRede =
@@ -145,7 +157,7 @@ export function PerdasDashboard({ perdas, lojas }: { perdas: Perda[]; lojas: Loj
           ? "Redução de perdas"
           : "Atenção";
 
-  const totaisPorAno = anos.map((ano) => ({
+  const totaisPorAno = seriesAnos.map((ano) => ({
     ano,
     total: perdasDaLoja
       .filter((perda) => perda.ano === ano)
@@ -162,57 +174,18 @@ export function PerdasDashboard({ perdas, lojas }: { perdas: Perda[]; lojas: Loj
     return ponto;
   });
 
-  const lojasParaGrafico = useMemo(() => {
-    const acumulado = new Map<string, number>();
-    for (const perda of perdas) {
-      if (anoSelecionado !== "todos" && perda.ano !== Number(anoSelecionado)) continue;
-      acumulado.set(perda.lojaId, (acumulado.get(perda.lojaId) ?? 0) + perda.valor);
-    }
-    return [...acumulado.entries()]
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 10)
-      .map(([lojaId]) => lojaId);
-  }, [perdas, anoSelecionado]);
+  const lojasParaGrafico = obterLojasParaGrafico(perdasUnificadas, lojaSelecionada, anoSelecionado);
+  const dadosPorLoja = criarDadosComparativoLojas(
+    perdasUnificadas,
+    lojasParaGrafico,
+    seriesAnos,
+    lojaPorId,
+  );
+  const participacao = criarDadosParticipacao(perdasUnificadas, seriesAnos, lojaSelecionada);
+  const lojasParticipacao = participacao.lojas;
+  const dadosParticipacao = participacao.dados;
 
-  const dadosPorLoja = lojasParaGrafico.map((lojaId) => {
-    const ponto: Record<string, string | number> = {
-      loja: lojaPorId.get(lojaId) ?? "Loja removida",
-    };
-    for (const ano of seriesAnos) {
-      ponto[String(ano)] = perdas
-        .filter((perda) => perda.lojaId === lojaId && perda.ano === ano)
-        .reduce((soma, perda) => soma + perda.valor, 0);
-    }
-    return ponto;
-  });
-
-  const lojasParticipacao = useMemo(() => {
-    const totais = new Map<string, number>();
-    for (const perda of perdas)
-      totais.set(perda.lojaId, (totais.get(perda.lojaId) ?? 0) + perda.valor);
-    return [...totais.entries()]
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 7)
-      .map(([lojaId]) => lojaId);
-  }, [perdas]);
-  const dadosParticipacao = anos.map((ano) => {
-    const dados: Record<string, number> = { ano };
-    let demais = 0;
-    const totalAnual = perdas
-      .filter((perda) => perda.ano === ano)
-      .reduce((soma, perda) => soma + perda.valor, 0);
-    for (const perda of perdas.filter((item) => item.ano === ano)) {
-      if (totalAnual === 0) continue;
-      const chave = lojasParticipacao.includes(perda.lojaId) ? perda.lojaId : "demais";
-      const valor = (perda.valor / totalAnual) * 100;
-      if (chave === "demais") demais += valor;
-      else dados[chave] = (dados[chave] ?? 0) + valor;
-    }
-    dados["demais"] = demais;
-    return dados;
-  });
-
-  const dadosSemPerdas = perdas.length === 0;
+  const dadosSemPerdas = perdasUnificadas.length === 0;
 
   return (
     <section className="space-y-5">
@@ -241,8 +214,8 @@ export function PerdasDashboard({ perdas, lojas }: { perdas: Perda[]; lojas: Loj
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="todas">Todas as lojas</SelectItem>
-                {lojas.map((loja) => (
-                  <SelectItem key={loja.id} value={loja.id}>
+                {lojasAgrupadas.map((loja) => (
+                  <SelectItem key={loja.chave} value={loja.chave}>
                     {loja.nome}
                   </SelectItem>
                 ))}
@@ -354,12 +327,32 @@ export function PerdasDashboard({ perdas, lojas }: { perdas: Perda[]; lojas: Loj
             comparações por loja, mês e ano.
           </p>
         </div>
+      ) : perdasFiltradas.length === 0 ? (
+        <div
+          role="status"
+          className="rounded-xl border border-dashed border-border bg-card px-5 py-12 text-center"
+        >
+          <ChartNoAxesCombined className="mx-auto size-9 text-muted-foreground" />
+          <h3 className="mt-3 font-semibold">Nenhum dado para os filtros selecionados</h3>
+          <p className="mx-auto mt-1 max-w-lg text-sm text-muted-foreground">
+            Não há registros de perdas para{" "}
+            {lojaSelecionada === "todas"
+              ? "as lojas selecionadas"
+              : (lojaPorId.get(lojaSelecionada) ?? "a loja selecionada")}{" "}
+            {anoSelecionado === "todos" ? "nos anos disponíveis" : `em ${anoSelecionado}`}.
+            Selecione outra loja ou outro ano para consultar os dados.
+          </p>
+        </div>
       ) : (
         <>
           <div className="grid gap-4 xl:grid-cols-2">
             <Painel
               titulo="Comparativo anual por loja"
-              descricao="As lojas com maior volume de perdas aparecem primeiro."
+              descricao={
+                lojaSelecionada === "todas"
+                  ? "As lojas com maior volume de perdas no período selecionado aparecem primeiro."
+                  : `Evolução anual de ${lojaPorId.get(lojaSelecionada) ?? "loja selecionada"}.`
+              }
             >
               <ResponsiveContainer width="100%" height={320}>
                 <BarChart data={dadosPorLoja} margin={{ top: 8, right: 12, bottom: 28, left: 8 }}>
@@ -444,7 +437,11 @@ export function PerdasDashboard({ perdas, lojas }: { perdas: Perda[]; lojas: Loj
             <div className="xl:col-span-2">
               <Painel
                 titulo="Participação das lojas no total anual"
-                descricao="Distribuição percentual das perdas da rede em cada ano."
+                descricao={
+                  lojaSelecionada === "todas"
+                    ? "Distribuição percentual das perdas da rede nos anos selecionados."
+                    : `Impacto de ${lojaPorId.get(lojaSelecionada) ?? "loja selecionada"} no total da rede por ano.`
+                }
               >
                 <ResponsiveContainer width="100%" height={Math.max(190, anos.length * 64)}>
                   <BarChart

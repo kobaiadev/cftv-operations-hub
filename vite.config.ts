@@ -13,6 +13,11 @@ export default defineConfig({
     envPrefix: ["VITE_", "NEXT_PUBLIC_SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"],
     optimizeDeps: {
       include: [
+        "react",
+        "react-dom",
+        "react-dom/client",
+        "react/jsx-runtime",
+        "react/jsx-dev-runtime",
         "@radix-ui/react-select",
         "@radix-ui/react-dialog",
         "@radix-ui/react-tooltip",

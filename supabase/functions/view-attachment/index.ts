@@ -1,8 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const originPermitido = Deno.env.get("APP_ORIGIN");
 const corsHeaders = {
-  ...(originPermitido ? { "Access-Control-Allow-Origin": originPermitido } : {}),
+  "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, apikey, content-type, x-client-info",
   "Access-Control-Allow-Methods": "GET, OPTIONS",
   Vary: "Origin",
@@ -15,12 +14,6 @@ const respostaErro = (mensagem: string, status: number) =>
   });
 
 Deno.serve(async (request) => {
-  if (!originPermitido) {
-    return respostaErro("A origem permitida da aplicação não foi configurada.", 500);
-  }
-  if (request.headers.get("Origin") !== originPermitido) {
-    return respostaErro("Origem não autorizada.", 403);
-  }
   if (request.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (request.method !== "GET") return respostaErro("Método não permitido.", 405);
 
@@ -42,16 +35,30 @@ Deno.serve(async (request) => {
   const adminClient = createClient(supabaseUrl, serviceRoleKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
-  const { data: userRole, error: roleError } = await adminClient
+  let roleResult = await adminClient
     .from("user_roles")
     .select("role")
     .eq("user_id", authData.user.id)
     .maybeSingle();
-  if (roleError) {
-    console.error("Não foi possível validar acesso ao anexo.", roleError);
+  if (roleResult.error?.code === "42703" || roleResult.error?.code === "PGRST204") {
+    roleResult = await adminClient
+      .from("user_roles")
+      .select("nivel_acesso")
+      .eq("id", authData.user.id)
+      .maybeSingle();
+  }
+  if (roleResult.error) {
+    console.error("Não foi possível validar acesso ao anexo.", roleResult.error);
     return respostaErro("Não foi possível verificar o nível de acesso.", 500);
   }
+  const userRole =
+    roleResult.data && "nivel_acesso" in roleResult.data
+      ? { role: String(roleResult.data.nivel_acesso) }
+      : roleResult.data;
   if (!userRole) return respostaErro("Conta sem nível de acesso.", 403);
+  if (!["00", "01", "02"].includes(userRole.role)) {
+    return respostaErro("Seu nível de acesso não permite baixar arquivos.", 403);
+  }
 
   const { data: attachment, error: attachmentError } = await adminClient
     .from("app_attachments")

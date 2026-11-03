@@ -61,12 +61,12 @@ O nível 03 pode visualizar o conteúdo exibido na tela; como em qualquer aplica
    supabase db push
    ```
 
-3. Configure `SUPABASE_SERVICE_ROLE_KEY` e `APP_ORIGIN` como segredos das Edge Functions. `APP_ORIGIN` deve ser a origem HTTPS exata da aplicação publicada, sem caminho adicional.
-4. Publique as funções administrativas e de leitura de anexos:
+3. As ações administrativas são executadas pela Edge Function `manage-users`; a chave de serviço nunca é necessária nem deve ser configurada no ambiente do frontend. As funções validam a sessão e a permissão no backend e aceitam chamadas CORS autenticadas sem exigir o segredo `APP_ORIGIN`. O Supabase fornece a chave de serviço ao runtime da Edge Function.
+4. Publique as funções administrativas e de leitura de anexos após alterações:
 
    ```sh
-   supabase functions deploy manage-users
-   supabase functions deploy view-attachment
+   supabase functions deploy manage-users --project-ref vufvljuxgnoohqcjgopu
+   supabase functions deploy view-attachment --project-ref vufvljuxgnoohqcjgopu
    ```
 
 5. Execute o provisionamento inicial em um ambiente seguro com Bun, usando a URL e a chave de serviço do projeto e senhas fortes fornecidas somente por variáveis de ambiente:

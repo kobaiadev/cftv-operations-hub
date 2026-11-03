@@ -1,8 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { LoaderCircle, Pencil, Save, ShieldPlus, Trash2, UsersRound } from "lucide-react";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
-import { useServerFn } from "@tanstack/react-start";
-import { createAccount, updateAccount, revokeAccountAccess } from "@/lib/accounts.functions";
+import {
+  atualizarUsuarioSistema,
+  criarUsuarioSistema,
+  listarUsuariosSistema,
+  revogarAcessoUsuario,
+} from "@/lib/accounts-api";
 import { accountSchema, accountEditSchema } from "@/lib/account-rules";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -24,12 +28,10 @@ import {
 } from "@/components/ui/table";
 import {
   ehAdministrador,
-  mapearPerfilUsuario,
   NIVEIS_ACESSO,
   useAuth,
   type AccessRole,
 } from "@/lib/auth";
-import { obterClienteSupabase } from "@/lib/supabase";
 
 type ManagedUser = {
   user_id: string;
@@ -59,9 +61,6 @@ export const Route = createFileRoute("/usuarios")({
 });
 
 function UsuariosPage() {
-  const create = useServerFn(createAccount);
-  const update = useServerFn(updateAccount);
-  const revoke = useServerFn(revokeAccountAccess);
   const { profile, loading, refreshProfile } = useAuth();
   const [editId, setEditId] = useState<string | null>(null);
   const [usuarios, setUsuarios] = useState<ManagedUser[]>([]);
@@ -76,19 +75,11 @@ function UsuariosPage() {
   const carregarUsuarios = useCallback(async () => {
     setCarregando(true);
     try {
-      const { data, error } = await obterClienteSupabase()
-        .from("user_roles")
-        .select("user_id, display_name, email, role")
-        .order("display_name");
-      if (error) throw new Error(`Não foi possível carregar os usuários: ${error.message}`);
-      const perfis = (data ?? []).map((usuario) => {
-        const perfil = mapearPerfilUsuario(usuario);
-        if (!perfil) {
-          throw new Error("A tabela user_roles contém um usuário com dados ou nível inválidos.");
-        }
-        return perfil;
-      });
-      setUsuarios(perfis);
+      const users = await listarUsuariosSistema();
+      if (users.some((usuario) => !usuario.user_id || !usuario.email || !usuario.display_name)) {
+        throw new Error("A tabela user_roles contém um usuário com dados ou nível inválidos.");
+      }
+      setUsuarios(users);
     } catch (error) {
       console.error("Erro ao carregar usuários do sistema.", error);
       toast.error(error instanceof Error ? error.message : "Não foi possível carregar usuários.");
@@ -124,12 +115,22 @@ function UsuariosPage() {
       if (!ehAdministrador(profile?.role)) throw new Error("Acesso não autorizado.");
       if (editId) {
         const input = accountEditSchema.parse({ userId: editId, nome, email, nivel });
-        await update({ data: input });
+        await atualizarUsuarioSistema({
+          userId: input.userId,
+          email: input.email,
+          displayName: input.nome,
+          role: input.nivel,
+        });
         if (editId === profile?.user_id) await refreshProfile();
       } else {
         const input = accountSchema.safeParse({ nome, email, senha, nivel });
         if (!input.success) throw new Error("Verifique nome, e-mail, senha e nível de acesso.");
-        await create({ data: input.data });
+        await criarUsuarioSistema({
+          email: input.data.email,
+          displayName: input.data.nome,
+          password: input.data.senha,
+          role: input.data.nivel,
+        });
       }
 
       setNome("");
@@ -156,7 +157,7 @@ function UsuariosPage() {
       return;
     setExcluindoId(usuario.user_id);
     try {
-      await revoke({ data: { userId: usuario.user_id } });
+      await revogarAcessoUsuario(usuario.user_id);
       toast.success("Acesso ao sistema revogado. A conta foi mantida no Lovable Cloud.");
       await carregarUsuarios();
     } catch (error) {

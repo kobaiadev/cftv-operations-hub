@@ -20,6 +20,7 @@ import { Route as ReparosRouteImport } from './routes/reparos'
 import { Route as ReservasRouteImport } from './routes/reservas'
 import { Route as SobreCriadorRouteImport } from './routes/sobre-criador'
 import { Route as SupervisaoRouteImport } from './routes/supervisao'
+import { Route as TesteConhecimentosRouteImport } from './routes/teste-conhecimentos'
 import { Route as UsuariosRouteImport } from './routes/usuarios'
 
 const IndexRoute = IndexRouteImport.update({
@@ -77,6 +78,11 @@ const SupervisaoRoute = SupervisaoRouteImport.update({
   path: '/supervisao',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TesteConhecimentosRoute = TesteConhecimentosRouteImport.update({
+  id: '/teste-conhecimentos',
+  path: '/teste-conhecimentos',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const UsuariosRoute = UsuariosRouteImport.update({
   id: '/usuarios',
   path: '/usuarios',
@@ -95,6 +101,7 @@ export interface FileRoutesByFullPath {
   '/reservas': typeof ReservasRoute
   '/sobre-criador': typeof SobreCriadorRoute
   '/supervisao': typeof SupervisaoRoute
+  '/teste-conhecimentos': typeof TesteConhecimentosRoute
   '/usuarios': typeof UsuariosRoute
 }
 export interface FileRoutesByTo {
@@ -109,6 +116,7 @@ export interface FileRoutesByTo {
   '/reservas': typeof ReservasRoute
   '/sobre-criador': typeof SobreCriadorRoute
   '/supervisao': typeof SupervisaoRoute
+  '/teste-conhecimentos': typeof TesteConhecimentosRoute
   '/usuarios': typeof UsuariosRoute
 }
 export interface FileRoutesById {
@@ -124,6 +132,7 @@ export interface FileRoutesById {
   '/reservas': typeof ReservasRoute
   '/sobre-criador': typeof SobreCriadorRoute
   '/supervisao': typeof SupervisaoRoute
+  '/teste-conhecimentos': typeof TesteConhecimentosRoute
   '/usuarios': typeof UsuariosRoute
 }
 export interface FileRouteTypes {
@@ -140,6 +149,7 @@ export interface FileRouteTypes {
     | '/reservas'
     | '/sobre-criador'
     | '/supervisao'
+    | '/teste-conhecimentos'
     | '/usuarios'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -154,6 +164,7 @@ export interface FileRouteTypes {
     | '/reservas'
     | '/sobre-criador'
     | '/supervisao'
+    | '/teste-conhecimentos'
     | '/usuarios'
   id:
     | '__root__'
@@ -168,6 +179,7 @@ export interface FileRouteTypes {
     | '/reservas'
     | '/sobre-criador'
     | '/supervisao'
+    | '/teste-conhecimentos'
     | '/usuarios'
   fileRoutesById: FileRoutesById
 }
@@ -183,6 +195,7 @@ export interface RootRouteChildren {
   ReservasRoute: typeof ReservasRoute
   SobreCriadorRoute: typeof SobreCriadorRoute
   SupervisaoRoute: typeof SupervisaoRoute
+  TesteConhecimentosRoute: typeof TesteConhecimentosRoute
   UsuariosRoute: typeof UsuariosRoute
 }
 
@@ -265,6 +278,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SupervisaoRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/teste-conhecimentos': {
+      id: '/teste-conhecimentos'
+      path: '/teste-conhecimentos'
+      fullPath: '/teste-conhecimentos'
+      preLoaderRoute: typeof TesteConhecimentosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/usuarios': {
       id: '/usuarios'
       path: '/usuarios'
@@ -287,6 +307,7 @@ const rootRouteChildren: RootRouteChildren = {
   ReservasRoute: ReservasRoute,
   SobreCriadorRoute: SobreCriadorRoute,
   SupervisaoRoute: SupervisaoRoute,
+  TesteConhecimentosRoute: TesteConhecimentosRoute,
   UsuariosRoute: UsuariosRoute,
 }
 export const routeTree = rootRouteImport

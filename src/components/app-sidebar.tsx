@@ -12,6 +12,7 @@ import {
   UserCog,
   Wrench,
   Newspaper,
+  Brain,
 } from "lucide-react";
 import {
   Sidebar,
@@ -36,6 +37,7 @@ const items = [
   { title: "Reservas CFTV", url: "/reservas", icon: Cctv },
   { title: "Solicitação de Reparo", url: "/reparos", icon: Wrench },
   { title: "Supervisão", url: "/supervisao", icon: ClipboardCheck },
+  { title: "Teste seus conhecimentos", url: "/teste-conhecimentos", icon: Brain },
   { title: "Cadastro", url: "/cadastro", icon: UserPlus },
   { title: "Configurações", url: "/configuracoes", icon: Settings },
   { title: "Usuários do Sistema", url: "/usuarios", icon: UserCog, adminOnly: true },

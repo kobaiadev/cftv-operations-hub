@@ -192,13 +192,17 @@ function AuthenticatedRoot() {
       <div className="flex min-h-screen w-full">
         <AppSidebar />
         <div className="flex min-w-0 flex-1 flex-col">
-          <header className="sticky top-0 z-10 flex h-14 items-center gap-3 border-b-2 border-primary/60 bg-background/80 px-4 pr-16 backdrop-blur">
+          <header className="app-topbar sticky top-0 z-10 flex h-14 items-center gap-3 border-b border-border bg-background/80 px-4 pr-16 backdrop-blur-xl">
             <SidebarTrigger />
             <span className="text-sm text-muted-foreground">
               Sistema de Controle de OS e Reservas CFTV
             </span>
+            <span className="ml-auto hidden items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-xs font-medium text-primary sm:inline-flex">
+              <span className="size-1.5 rounded-full bg-primary" />
+              Segurança Patrimonial
+            </span>
           </header>
-          <main className="flex-1 p-4 md:p-6 lg:p-8">
+          <main className="app-content flex-1 p-4 md:p-6 lg:p-8">
             <Outlet />
           </main>
         </div>

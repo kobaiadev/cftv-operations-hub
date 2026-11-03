@@ -50,7 +50,7 @@ export function AppSidebar() {
   const roleLabel = NIVEIS_ACESSO.find((item) => item.value === profile?.role)?.label ?? "";
 
   return (
-    <Sidebar collapsible="icon">
+    <Sidebar collapsible="icon" className="app-sidebar">
       <SidebarHeader className="border-b border-sidebar-border">
         <div className="flex items-center gap-2 px-1 py-1.5">
           <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-brand text-brand-foreground">

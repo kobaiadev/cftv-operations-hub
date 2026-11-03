@@ -22,6 +22,13 @@
       "when": 1793138928620,
       "tag": "0002_repair_requests",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1793666586152,
+      "tag": "0003_restore_operational_persistence",
+      "breakpoints": true
     }
   ]
 }

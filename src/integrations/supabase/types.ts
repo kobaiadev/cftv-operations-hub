@@ -14,6 +14,63 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_attachments: {
+        Row: {
+          content_type: string
+          created_at: string
+          created_by: string
+          entity_id: string
+          entity_type: string
+          file_name: string
+          id: string
+          label: string
+          storage_path: string
+        }
+        Insert: {
+          content_type?: string
+          created_at?: string
+          created_by?: string
+          entity_id: string
+          entity_type: string
+          file_name: string
+          id?: string
+          label?: string
+          storage_path: string
+        }
+        Update: {
+          content_type?: string
+          created_at?: string
+          created_by?: string
+          entity_id?: string
+          entity_type?: string
+          file_name?: string
+          id?: string
+          label?: string
+          storage_path?: string
+        }
+        Relationships: []
+      }
+      app_state: {
+        Row: {
+          data: Json
+          namespace: string
+          updated_at: string
+          updated_by: string
+        }
+        Insert: {
+          data?: Json
+          namespace: string
+          updated_at?: string
+          updated_by?: string
+        }
+        Update: {
+          data?: Json
+          namespace?: string
+          updated_at?: string
+          updated_by?: string
+        }
+        Relationships: []
+      }
       repair_requests: {
         Row: {
           created_at: string
@@ -74,6 +131,36 @@ export type Database = {
           email?: string
           role?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      work_orders: {
+        Row: {
+          created_at: string
+          created_by: string
+          description: string
+          event_date: string
+          id: string
+          occurrence_type: string
+          store_name: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string
+          description?: string
+          event_date: string
+          id?: string
+          occurrence_type?: string
+          store_name: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          description?: string
+          event_date?: string
+          id?: string
+          occurrence_type?: string
+          store_name?: string
         }
         Relationships: []
       }

@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Download, Loader2, Save, ScanText, Search, Trash2, Wrench, X } from "lucide-react";
+import { Download, Loader2, Pencil, Save, ScanText, Search, Trash2, Wrench, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,6 +28,9 @@ import { baixarPdfReparo } from "@/lib/os-pdf";
 import { podeBaixar, podeEditar, useAuth } from "@/lib/auth";
 import {
   carregarImagensReparo,
+  atualizarReparo,
+  type SolicitacaoReparo,
+  type ImagemReparo,
   criarReparo,
   excluirReparo,
   listarReparos,
@@ -68,6 +71,8 @@ function ReparosPage() {
   });
 
   const [loja, setLoja] = useState("");
+  const [editando, setEditando] = useState<SolicitacaoReparo | null>(null);
+  const [existentes, setExistentes] = useState<ImagemReparo[]>([]);
   const [empresa, setEmpresa] = useState("");
   const [descricao, setDescricao] = useState("");
   const gerente = lojas.find((l) => l.nome === loja)?.gerente ?? "";
@@ -106,6 +111,8 @@ function ReparosPage() {
   };
 
   const limpar = () => {
+    setEditando(null);
+    setExistentes([]);
     setLoja("");
     setEmpresa("");
     setDescricao("");
@@ -116,8 +123,9 @@ function ReparosPage() {
   };
 
   const salvar = useMutation({
-    mutationFn: () =>
-      criarReparo({
+    mutationFn: () => {
+      if (!editar) throw new Error("Seu nível não permite editar solicitações.");
+      const dados = {
         loja,
         empresa_responsavel: empresa.trim(),
         gerente,
@@ -130,7 +138,9 @@ function ReparosPage() {
             s.file ? [{ rotulo: `Imagem adicional ${i + 1}`, detalhes: s.detalhes, file: s.file }] : [],
           ),
         ],
-      }),
+      };
+      return editando ? atualizarReparo(editando.id, dados, existentes.map((img) => ({ ...img, detalhes: slots.find((s, i) => img.rotulo === `Imagem adicional ${i + 1}`)?.detalhes ?? img.detalhes }))) : criarReparo(dados);
+    },
     onSuccess: (id) => {
       toast.success(`${id} registrada.`);
       limpar();
@@ -175,6 +185,7 @@ function ReparosPage() {
 
       {editar && (
         <section className="space-y-5 rounded-xl border border-border bg-card p-5">
+          {editando && <h2 className="font-semibold">Editar {editando.id}</h2>}
           <div className="grid gap-4 md:grid-cols-2">
             <Field label="Loja">
               <Select value={loja} onValueChange={setLoja}>
@@ -197,7 +208,7 @@ function ReparosPage() {
               <Input value={gerente} readOnly placeholder="Selecione a loja" className="bg-muted/40" />
             </Field>
             <Field label="Solicitante">
-              <Input value={solicitante} readOnly className="bg-muted/40" />
+              <Input value={editando?.solicitante ?? solicitante} readOnly className="bg-muted/40" />
             </Field>
           </div>
 
@@ -260,13 +271,13 @@ function ReparosPage() {
 
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={limpar}>
-              <X /> Limpar
+              <X /> {editando ? "Cancelar" : "Limpar"}
             </Button>
             <Button
               disabled={!loja || !descricao.trim() || salvar.isPending || lendoGlpi}
               onClick={() => salvar.mutate()}
             >
-              {salvar.isPending ? <Loader2 className="animate-spin" /> : <Save />} Registrar solicitação
+              {salvar.isPending ? <Loader2 className="animate-spin" /> : <Save />} {editando ? "Salvar alterações" : "Registrar solicitação"}
             </Button>
           </div>
         </section>
@@ -309,6 +320,16 @@ function ReparosPage() {
                 <TableCell className="hidden text-muted-foreground lg:table-cell">{r.solicitante}</TableCell>
                 <TableCell className="pr-5 text-right">
                   <div className="flex justify-end gap-1">
+                    {editar && <Button size="icon" variant="ghost" title="Editar" aria-label={`Editar ${r.id}`} disabled={salvar.isPending} onClick={() => {
+                      if (!editar) return;
+                      limpar(); setEditando(r); setExistentes(r.imagens); setLoja(r.loja); setEmpresa(r.empresa_responsavel); setDescricao(r.descricao); setGlpiNumero(r.glpi_numero);
+                      setSlots(slotsVazios().map((s, i) => ({ ...s, detalhes: r.imagens.find((img) => img.rotulo === `Imagem adicional ${i + 1}`)?.detalhes ?? "" })));
+                      void carregarImagensReparo(r.imagens).then((imagens) => {
+                        setGlpiUrl(imagens.find((img) => img.rotulo === "Solicitação GLPI")?.dataUrl ?? "");
+                        setSlots((slots) => slots.map((s, i) => ({ ...s, url: imagens.find((img) => img.rotulo === `Imagem adicional ${i + 1}`)?.dataUrl ?? "" })));
+                      });
+                      window.scrollTo({ top: 0, behavior: "smooth" });
+                    }}><Pencil className="text-primary" /></Button>}
                     {podeBaixar(profile?.role) && (
                       <Button size="sm" variant="outline" onClick={() => void baixar(r.id)}>
                         <Download /> PDF

@@ -1,4 +1,5 @@
 # Login repair
+- [ ] Adicionar edição a todos os cadastros existentes, respeitando níveis de acesso; registrar regra para futuros cadastros e verificar salvamento.
 - [x] Corrigir tabelas ausentes para cadastro, OS, supervisões e anexos; cadastro de empresa salvo e lido após recarregar com sessão real, registro temporário removido; 14 testes passaram e páginas operacionais abriram sem erros.
 - [x] Corrigir restauração de sessões expiradas; testes e acesso real ao painel após recarregar verificados, sem alterar senhas ou níveis. Senha pessoal não testada.
 - [x] Incluir as assinaturas compartilhadas da OS ao final do PDF de reparos; download real, teste com anexos e alinhamento visual verificados.

@@ -29,6 +29,13 @@
       "when": 1793666586152,
       "tag": "0003_restore_operational_persistence",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1793667085569,
+      "tag": "0004_allow_authorized_repair_edits",
+      "breakpoints": true
     }
   ]
 }

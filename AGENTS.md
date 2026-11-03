@@ -13,6 +13,7 @@
 - Login-specific semantic tokens in `src/styles.css` and the Button login variant isolate its branding from operational screens.
 - Account creation and revocation use authenticated server functions that verify the caller's stored access level before loading the privileged client; browser role writes and public signup are forbidden.
 - Cloud access assignments use `user_roles.user_id`, `display_name`, `email`, and `role`; preserve the existing access-level meanings.
+- Registration editors update records by stable ID through the existing store/API and reuse creation validation; operational edits are RLS-protected, while account edits use authenticated administrator-only server functions.
 - Preserve authentication context identity through Vite hot data during Fast Refresh so mounted providers and updated consumers cannot diverge.
 - Validate restored sessions with getUser before exposing them; clear invalid sessions locally and ignore cached INITIAL_SESSION events so expired credentials cannot bypass or block login.
 - Hydrate registered operational stores from Cloud after validating the user's access and before exposing private screens; this ensures saved data survives reloads.

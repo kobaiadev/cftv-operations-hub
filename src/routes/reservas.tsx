@@ -1,7 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Cctv, Search } from "lucide-react";
+import { Cctv, Pencil, Save, Search } from "lucide-react";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { podeEditar, useAuth } from "@/lib/auth";
 import {
   Table,
   TableBody,
@@ -10,7 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useOS } from "@/lib/os-store";
+import { useOS, type OS } from "@/lib/os-store";
 
 export const Route = createFileRoute("/reservas")({
   head: () => ({
@@ -33,7 +36,10 @@ export const Route = createFileRoute("/reservas")({
 });
 
 function ReservasPage() {
-  const { ordens } = useOS();
+  const { ordens, updateOS } = useOS();
+  const { profile } = useAuth();
+  const editar = podeEditar(profile?.role);
+  const [editando, setEditando] = useState<OS | null>(null);
   const reservas = ordens.filter((ordem) => ordem.reserva?.numero.trim());
   const [busca, setBusca] = useState("");
   const termoBusca = normalizarBusca(busca);
@@ -105,12 +111,13 @@ function ReservasPage() {
               <TableHead>Data da solicitação</TableHead>
               <TableHead>Número da reserva</TableHead>
               <TableHead className="pr-5">Boletim de Ocorrência</TableHead>
+              {editar && <TableHead className="w-16">Ações</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
             {reservasFiltradas.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="py-14 text-center">
+                <TableCell colSpan={editar ? 7 : 6} className="py-14 text-center">
                   <div className="flex flex-col items-center gap-2 text-muted-foreground">
                     <Cctv className="size-8" />
                     <p className="font-medium">
@@ -143,12 +150,28 @@ function ReservasPage() {
                   <TableCell className="pr-5 font-mono text-sm">
                     {ordem.bo?.numero?.trim() || "NÃO"}
                   </TableCell>
+                  {editar && <TableCell><Button variant="ghost" size="icon" title="Editar" aria-label={`Editar reserva ${ordem.reserva?.numero}`} onClick={() => { if (editar) setEditando({ ...ordem }); }}><Pencil className="text-primary" /></Button></TableCell>}
                 </TableRow>
               ))
             )}
           </TableBody>
         </Table>
       </div>
+      <Dialog open={!!editando && editar} onOpenChange={(open) => { if (!open) setEditando(null); }}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Editar reserva CFTV</DialogTitle><DialogDescription>{editando?.id}</DialogDescription></DialogHeader>
+          {editando?.reserva && <form className="space-y-4" onSubmit={(e) => {
+            e.preventDefault(); if (!editar || !editando.reserva || !editando.reserva.numero.trim()) return;
+            updateOS(editando.id, { reserva: { ...editando.reserva, numero: editando.reserva.numero.trim() } }); setEditando(null);
+          }}>
+            <label htmlFor="reserva-editar-numero" className="text-sm font-medium">Número da reserva</label>
+            <Input id="reserva-editar-numero" required value={editando.reserva.numero} onChange={(e) => { if (editando.reserva) setEditando({ ...editando, reserva: { ...editando.reserva, numero: e.target.value } }); }} />
+            <label htmlFor="reserva-editar-data" className="text-sm font-medium">Data da solicitação</label>
+            <Input id="reserva-editar-data" value={editando.reserva.vinculadaEm} onChange={(e) => { if (editando.reserva) setEditando({ ...editando, reserva: { ...editando.reserva, vinculadaEm: e.target.value } }); }} />
+            <DialogFooter><Button type="button" variant="outline" onClick={() => setEditando(null)}>Cancelar</Button><Button type="submit"><Save /> Salvar alterações</Button></DialogFooter>
+          </form>}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -204,14 +204,20 @@ export function useCadastro() {
       }),
     addPessoa: (p: Omit<Pessoa, "id">) =>
       set({ ...state, pessoas: [...state.pessoas, { ...p, id: uid() }] }),
+    updatePessoa: (id: string, p: Omit<Pessoa, "id">) =>
+      set({ ...state, pessoas: state.pessoas.map((x) => x.id === id ? { ...p, id } : x) }),
     removePessoa: (id: string) =>
       set({ ...state, pessoas: state.pessoas.filter((p) => p.id !== id) }),
     addEmpresa: (empresa: Omit<Empresa, "id">) =>
       set({ ...state, empresas: [...state.empresas, { ...empresa, id: uid() }] }),
+    updateEmpresa: (id: string, empresa: Omit<Empresa, "id">) =>
+      set({ ...state, empresas: state.empresas.map((x) => x.id === id ? { ...empresa, id } : x) }),
     removeEmpresa: (id: string) =>
       set({ ...state, empresas: state.empresas.filter((empresa) => empresa.id !== id) }),
     addSupervisor: (supervisor: Omit<Supervisor, "id">) =>
       set({ ...state, supervisores: [...state.supervisores, { ...supervisor, id: uid() }] }),
+    updateSupervisor: (id: string, supervisor: Omit<Supervisor, "id">) =>
+      set({ ...state, supervisores: state.supervisores.map((x) => x.id === id ? { ...supervisor, id } : x) }),
     removeSupervisor: (id: string) =>
       set({
         ...state,
@@ -247,6 +253,12 @@ export function useCadastro() {
         ...state,
         perdas: [...lancamentos.map((perda) => ({ ...perda, id: uid() })), ...state.perdas],
       });
+    },
+    updatePerda: (id: string, p: Omit<Perda, "id">) => {
+      if (state.perdas.some((x) => x.id !== id && x.lojaId === p.lojaId && x.mes === p.mes && x.ano === p.ano)) {
+        throw new Error("Já existe um lançamento de perdas para esta loja, mês e ano.");
+      }
+      set({ ...state, perdas: state.perdas.map((x) => x.id === id ? { ...p, id } : x) });
     },
     removePerda: (id: string) => set({ ...state, perdas: state.perdas.filter((p) => p.id !== id) }),
   };

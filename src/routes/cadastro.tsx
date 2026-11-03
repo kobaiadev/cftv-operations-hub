@@ -356,9 +356,11 @@ const pessoaSchema = z.object({
 function PessoasTab({ funcao, label, plural }: { funcao: Funcao; label: string; plural: string }) {
   const { profile } = useAuth();
   const podeAlterar = podeEditar(profile?.role);
-  const { lojas, pessoas, addPessoa, removePessoa } = useCadastro();
+  const { lojas, pessoas, addPessoa, updatePessoa, removePessoa } = useCadastro();
   const empty = { nome: "", matricula: "", telefone: "", lojaId: "", turno: "" };
   const [form, setForm] = useState(empty);
+  const [editId, setEditId] = useState<string | null>(null);
+  const reset = () => { setForm(empty); setEditId(null); setErrors({}); };
   const [lojaFiltro, setLojaFiltro] = useState("todas");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const lista = pessoas.filter(
@@ -377,14 +379,14 @@ function PessoasTab({ funcao, label, plural }: { funcao: Funcao; label: string; 
       setErrors(Object.fromEntries(r.error.issues.map((i) => [i.path[0], i.message])));
       return;
     }
-    addPessoa({ ...r.data, funcao });
-    setForm(empty);
-    setErrors({});
+    if (editId) updatePessoa(editId, { ...r.data, funcao });
+    else addPessoa({ ...r.data, funcao });
+    reset();
   };
 
   return (
     <div className="grid gap-6 lg:grid-cols-[360px_1fr]">
-      <Panel oculto={!podeAlterar} title={`Novo ${label.toLowerCase()}`}>
+      <Panel oculto={!podeAlterar} title={editId ? `Editar ${label.toLowerCase()}` : `Novo ${label.toLowerCase()}`}>
         <form onSubmit={submit} className="space-y-4 p-5">
           <Field label="Nome completo" error={errors["nome"]}>
             <Input value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} />
@@ -433,8 +435,9 @@ function PessoasTab({ funcao, label, plural }: { funcao: Funcao; label: string; 
             </Select>
           </Field>
           <Button type="submit" className="w-full">
-            <Plus /> Cadastrar {label.toLowerCase()}
+            {editId ? <Save /> : <Plus />} {editId ? "Salvar alterações" : `Cadastrar ${label.toLowerCase()}`}
           </Button>
+          {editId && <Button type="button" variant="outline" className="w-full" onClick={reset}>Cancelar</Button>}
         </form>
       </Panel>
       <Panel title={`${plural} cadastrados (${lista.length})`}>
@@ -465,7 +468,7 @@ function PessoasTab({ funcao, label, plural }: { funcao: Funcao; label: string; 
               <TableHead>Loja</TableHead>
               <TableHead className="hidden md:table-cell">Turno</TableHead>
               <TableHead className="hidden md:table-cell">Telefone</TableHead>
-              <TableHead className="pr-5 w-10" />
+              <TableHead className="pr-5 w-24" />
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -481,7 +484,8 @@ function PessoasTab({ funcao, label, plural }: { funcao: Funcao; label: string; 
                 <TableCell className="hidden md:table-cell font-mono text-xs">
                   {p.telefone}
                 </TableCell>
-                <TableCell className="pr-5">
+                <TableCell className="pr-5 whitespace-nowrap">
+                  {podeAlterar && <Button variant="ghost" size="icon" title="Editar" aria-label={`Editar ${p.nome}`} onClick={() => { if (!podeAlterar) return; setEditId(p.id); setForm({ nome: p.nome, matricula: p.matricula, telefone: p.telefone, lojaId: p.lojaId, turno: p.turno }); setErrors({}); }}><Pencil className="text-primary" /></Button>}
                   <Button
                     hidden={!podeAlterar}
                     variant="ghost"
@@ -514,9 +518,11 @@ const empresaSchema = z.object({
 function EmpresasTab() {
   const { profile } = useAuth();
   const podeAlterar = podeEditar(profile?.role);
-  const { empresas, supervisores, addEmpresa, removeEmpresa } = useCadastro();
+  const { empresas, supervisores, addEmpresa, updateEmpresa, removeEmpresa } = useCadastro();
   const vazio = { nome: "", cnpj: "" };
   const [form, setForm] = useState(vazio);
+  const [editId, setEditId] = useState<string | null>(null);
+  const reset = () => { setForm(vazio); setEditId(null); setErro(""); setErros({}); };
   const [erro, setErro] = useState("");
   const [erros, setErros] = useState<Record<string, string>>({});
 
@@ -531,19 +537,18 @@ function EmpresasTab() {
       return;
     }
     const cnpj = resultado.data.cnpj.replace(/\D/g, "");
-    if (empresas.some((empresa) => empresa.cnpj.replace(/\D/g, "") === cnpj)) {
+    if (empresas.some((empresa) => empresa.id !== editId && empresa.cnpj.replace(/\D/g, "") === cnpj)) {
       setErro("Já existe uma empresa cadastrada com este CNPJ.");
       return;
     }
-    addEmpresa({ ...resultado.data, cnpj });
-    setForm(vazio);
-    setErros({});
-    setErro("");
+    if (editId) updateEmpresa(editId, { ...resultado.data, cnpj });
+    else addEmpresa({ ...resultado.data, cnpj });
+    reset();
   };
 
   return (
     <div className="grid gap-6 lg:grid-cols-[360px_1fr]">
-      <Panel oculto={!podeAlterar} title="Cadastro de empresa">
+      <Panel oculto={!podeAlterar} title={editId ? "Editar empresa" : "Cadastro de empresa"}>
         <form onSubmit={submit} className="space-y-4 p-5">
           <Field label="Nome da empresa" error={erros["nome"]}>
             <Input
@@ -562,8 +567,9 @@ function EmpresasTab() {
           </Field>
           {erro && <p className="text-sm text-destructive">{erro}</p>}
           <Button type="submit" className="w-full">
-            <Plus /> Cadastrar empresa
+            {editId ? <Save /> : <Plus />} {editId ? "Salvar alterações" : "Cadastrar empresa"}
           </Button>
+          {editId && <Button type="button" variant="outline" className="w-full" onClick={reset}>Cancelar</Button>}
         </form>
       </Panel>
       <Panel title={`Empresas cadastradas (${empresas.length})`}>
@@ -572,7 +578,7 @@ function EmpresasTab() {
             <TableRow>
               <TableHead className="pl-5">Nome da empresa</TableHead>
               <TableHead>CNPJ</TableHead>
-              <TableHead className="w-16 pr-5" />
+              <TableHead className="w-24 pr-5" />
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -583,7 +589,8 @@ function EmpresasTab() {
                 <TableRow key={empresa.id}>
                   <TableCell className="pl-5 font-medium">{empresa.nome}</TableCell>
                   <TableCell className="font-mono text-xs">{empresa.cnpj}</TableCell>
-                  <TableCell className="pr-5">
+                  <TableCell className="pr-5 whitespace-nowrap">
+                    {podeAlterar && <Button variant="ghost" size="icon" title="Editar" aria-label={`Editar ${empresa.nome}`} onClick={() => { if (!podeAlterar) return; setEditId(empresa.id); setForm({ nome: empresa.nome, cnpj: empresa.cnpj }); setErros({}); setErro(""); }}><Pencil className="text-primary" /></Button>}
                     <Button
                       hidden={!podeAlterar}
                       variant="ghost"
@@ -620,8 +627,10 @@ const supervisorSchema = z.object({
 function SupervisoresTab() {
   const { profile } = useAuth();
   const podeAlterar = podeEditar(profile?.role);
-  const { empresas, supervisores, addSupervisor, removeSupervisor } = useCadastro();
+  const { empresas, supervisores, addSupervisor, updateSupervisor, removeSupervisor } = useCadastro();
   const vazio = { nome: "", tipo: "", regiao: "", empresaId: "" };
+  const [editId, setEditId] = useState<string | null>(null);
+  const reset = () => { setForm(vazio); setEditId(null); setErros({}); };
   const [form, setForm] = useState(vazio);
   const [erros, setErros] = useState<Record<string, string>>({});
 
@@ -643,20 +652,21 @@ function SupervisoresTab() {
       setErros({ empresaId: "Selecione a empresa do supervisor." });
       return;
     }
-    addSupervisor({
+    const dados = {
       nome: resultado.data.nome,
       tipo: resultado.data.tipo,
       ...(resultado.data.tipo === "NAGUMO"
         ? { regiao: resultado.data.regiao.trim() }
         : { empresaId: resultado.data.empresaId }),
-    });
-    setForm(vazio);
-    setErros({});
+    };
+    if (editId) updateSupervisor(editId, dados);
+    else addSupervisor(dados);
+    reset();
   };
 
   return (
     <div className="grid gap-6 lg:grid-cols-[360px_1fr]">
-      <Panel oculto={!podeAlterar} title="Cadastro de supervisores">
+      <Panel oculto={!podeAlterar} title={editId ? "Editar supervisor" : "Cadastro de supervisores"}>
         <form onSubmit={submit} className="space-y-4 p-5">
           <Field label="Vínculo" error={erros["tipo"]}>
             <Select
@@ -724,8 +734,9 @@ function SupervisoresTab() {
             </Field>
           )}
           <Button type="submit" className="w-full">
-            <Plus /> Cadastrar supervisor
+            {editId ? <Save /> : <Plus />} {editId ? "Salvar alterações" : "Cadastrar supervisor"}
           </Button>
+          {editId && <Button type="button" variant="outline" className="w-full" onClick={reset}>Cancelar</Button>}
         </form>
       </Panel>
       <Panel title={`Supervisores cadastrados (${supervisores.length})`}>
@@ -735,7 +746,7 @@ function SupervisoresTab() {
               <TableHead className="pl-5">Nome</TableHead>
               <TableHead>Vínculo</TableHead>
               <TableHead>Região / empresa</TableHead>
-              <TableHead className="w-16 pr-5" />
+              <TableHead className="w-24 pr-5" />
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -750,7 +761,8 @@ function SupervisoresTab() {
                     : (empresas.find((empresa) => empresa.id === supervisor.empresaId)?.nome ??
                       "Empresa não encontrada")}
                 </TableCell>
-                <TableCell className="pr-5">
+                <TableCell className="pr-5 whitespace-nowrap">
+                  {podeAlterar && <Button variant="ghost" size="icon" title="Editar" aria-label={`Editar ${supervisor.nome}`} onClick={() => { if (!podeAlterar) return; setEditId(supervisor.id); setForm({ nome: supervisor.nome, tipo: supervisor.tipo, regiao: supervisor.regiao ?? "", empresaId: supervisor.empresaId ?? "" }); setErros({}); }}><Pencil className="text-primary" /></Button>}
                   <Button
                     hidden={!podeAlterar}
                     variant="ghost"

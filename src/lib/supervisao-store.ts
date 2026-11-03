@@ -115,5 +115,7 @@ export function useSupervisoes() {
     },
     removeSupervisao: (id: string) =>
       publicar(supervisoes.filter((supervisao) => supervisao.id !== id)),
+    updateSupervisao: (id: string, changes: Partial<Omit<Supervisao, "id" | "fotos" | "dataHora">>) =>
+      publicar(supervisoes.map((s) => s.id === id ? { ...s, ...changes } : s)),
   };
 }

@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import type { Json } from "@/integrations/supabase/types";
 
 export type ImagemReparo = { rotulo: string; detalhes: string; path: string; tipo: string };
 export type SolicitacaoReparo = {
@@ -55,6 +56,30 @@ export async function criarReparo(nova: NovaSolicitacao): Promise<string> {
 export async function excluirReparo(id: string) {
   const { error } = await supabase.from("repair_requests").delete().eq("id", id);
   if (error) throw error;
+}
+
+export async function atualizarReparo(id: string, nova: NovaSolicitacao, existentes: ImagemReparo[]): Promise<string> {
+  const imagens = [...existentes];
+  const enviados: string[] = [];
+  try {
+    for (const a of nova.arquivos) {
+      const path = `${id}/${crypto.randomUUID()}`;
+      const { error } = await supabase.storage.from(BUCKET).upload(path, a.file, { contentType: a.file.type });
+      if (error) throw error;
+      enviados.push(path);
+      const index = imagens.findIndex((img) => img.rotulo === a.rotulo);
+      const img = { rotulo: a.rotulo, detalhes: a.detalhes, path, tipo: a.file.type };
+      if (index < 0) imagens.push(img);
+      else imagens[index] = img;
+    }
+    const { arquivos: _arquivos, solicitante: _solicitante, ...campos } = nova;
+    const { error } = await supabase.from("repair_requests").update({ ...campos, imagens: imagens as unknown as Json }).eq("id", id).select("id").single();
+    if (error) throw error;
+    return id;
+  } catch (error) {
+    if (enviados.length) await supabase.storage.from(BUCKET).remove(enviados);
+    throw error;
+  }
 }
 
 /** Baixa as imagens como data URL para incorporar no PDF. */

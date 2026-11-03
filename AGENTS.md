@@ -11,6 +11,7 @@
 
 - Keep email/password login at `/login`; public signup/recovery routes are absent because accounts are administered internally.
 - Login-specific semantic tokens in `src/styles.css` and the Button login variant isolate its branding from operational screens.
+- Apply operational appearance through semantic CSS token overrides on the document; restore the browser preference after hydration and keep login branding isolated to avoid changing authentication visuals.
 - Account creation and revocation use authenticated server functions that verify the caller's stored access level before loading the privileged client; browser role writes and public signup are forbidden.
 - Cloud access assignments use `user_roles.user_id`, `display_name`, `email`, and `role`; preserve the existing access-level meanings.
 - Registration editors update records by stable ID through the existing store/API and reuse creation validation; operational edits are RLS-protected, while account edits use authenticated administrator-only server functions.

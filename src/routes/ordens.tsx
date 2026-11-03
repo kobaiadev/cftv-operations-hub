@@ -4,6 +4,7 @@ import {
   ClipboardList,
   Download,
   FileText,
+  Eye,
   ImageUp,
   Link2,
   Loader2,
@@ -548,6 +549,8 @@ function OrdensPage() {
       setCarregandoEdicao(false);
     }
   };
+
+  const [visualizando, setVisualizando] = useState<OS | null>(null);
 
   const baixarPdf = async (os: OS) => {
     if (!podeExportar) return;
@@ -1337,6 +1340,16 @@ function OrdensPage() {
                       ) : (
                         <Paperclip />
                       )}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setVisualizando(o)}
+                      aria-label={`Visualizar ${o.id}`}
+                      title={`Visualizar ${o.id}`}
+                    >
+                      <Eye />
                     </Button>
                     <Button
                       hidden={!podeExportar}

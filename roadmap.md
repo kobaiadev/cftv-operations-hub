@@ -1,6 +1,6 @@
 # Login repair
-- [ ] Cadastrar as nove lojas fornecidas com gerentes, endereços, cidades e estados, sem duplicar registros existentes.
-- [ ] Adicionar edição a todos os cadastros existentes, respeitando níveis de acesso; registrar regra para futuros cadastros e verificar salvamento.
+- [x] Cadastrar as nove lojas fornecidas com gerentes, endereços, cidades e estados, sem duplicar registros existentes; preservado endereço completo da loja 36 e nove lojas verificadas na tela.
+- [x] Adicionar edição a todos os cadastros existentes, respeitando níveis de acesso; regra futura registrada, empresa e usuário salvos e relidos após recarregar, 19 testes passaram. Supervisão preserva fotos e data originais na edição.
 - [x] Corrigir tabelas ausentes para cadastro, OS, supervisões e anexos; cadastro de empresa salvo e lido após recarregar com sessão real, registro temporário removido; 14 testes passaram e páginas operacionais abriram sem erros.
 - [x] Corrigir restauração de sessões expiradas; testes e acesso real ao painel após recarregar verificados, sem alterar senhas ou níveis. Senha pessoal não testada.
 - [x] Incluir as assinaturas compartilhadas da OS ao final do PDF de reparos; download real, teste com anexos e alinhamento visual verificados.

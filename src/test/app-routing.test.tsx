@@ -37,4 +37,11 @@ describe("App routing", () => {
 
     expect(matches.at(-1)?.routeId).toBe("/supervisao");
   });
+
+  it("reconhece as páginas de notícias e sobre o criador", () => {
+    const router = createRouter({ routeTree, context: { queryClient: new QueryClient() } });
+
+    expect(router.matchRoutes("/noticias").at(-1)?.routeId).toBe("/noticias");
+    expect(router.matchRoutes("/sobre-criador").at(-1)?.routeId).toBe("/sobre-criador");
+  });
 });

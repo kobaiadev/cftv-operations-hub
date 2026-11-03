@@ -35,7 +35,7 @@ function LoginPage() {
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
-  if (session && !loading) return <Navigate to="/" replace />;
+  if (session && !loading) return <Navigate to="/noticias" replace />;
 
   async function entrar(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -64,7 +64,7 @@ function LoginPage() {
         return;
       }
       setSenha("");
-      await navigate({ to: "/", replace: true });
+      await navigate({ to: "/noticias", replace: true });
     } catch {
       setErro("Não foi possível conectar. Verifique sua conexão e tente novamente.");
     } finally {

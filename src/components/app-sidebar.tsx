@@ -11,6 +11,7 @@ import {
   LogOut,
   UserCog,
   Wrench,
+  Newspaper,
 } from "lucide-react";
 import {
   Sidebar,
@@ -28,6 +29,7 @@ import { useAuth, ehAdministrador, NIVEIS_ACESSO } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 
 const items = [
+  { title: "NOTICIAS", url: "/noticias", icon: Newspaper },
   { title: "Análise de Perdas", url: "/analise-perdas", icon: ChartNoAxesCombined },
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Ordens de Serviço", url: "/ordens", icon: ClipboardList },
@@ -75,6 +77,18 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={path === "/sobre-criador"}
+                  tooltip="Sobre o Criador"
+                >
+                  <Link to="/sobre-criador">
+                    <UserCog />
+                    <span>Sobre o Criador</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

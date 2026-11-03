@@ -14,9 +14,11 @@ import { Route as AnalisePerdasRouteImport } from './routes/analise-perdas'
 import { Route as CadastroRouteImport } from './routes/cadastro'
 import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as NoticiasRouteImport } from './routes/noticias'
 import { Route as OrdensRouteImport } from './routes/ordens'
 import { Route as ReparosRouteImport } from './routes/reparos'
 import { Route as ReservasRouteImport } from './routes/reservas'
+import { Route as SobreCriadorRouteImport } from './routes/sobre-criador'
 import { Route as SupervisaoRouteImport } from './routes/supervisao'
 import { Route as UsuariosRouteImport } from './routes/usuarios'
 
@@ -45,6 +47,11 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const NoticiasRoute = NoticiasRouteImport.update({
+  id: '/noticias',
+  path: '/noticias',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OrdensRoute = OrdensRouteImport.update({
   id: '/ordens',
   path: '/ordens',
@@ -58,6 +65,11 @@ const ReparosRoute = ReparosRouteImport.update({
 const ReservasRoute = ReservasRouteImport.update({
   id: '/reservas',
   path: '/reservas',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SobreCriadorRoute = SobreCriadorRouteImport.update({
+  id: '/sobre-criador',
+  path: '/sobre-criador',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SupervisaoRoute = SupervisaoRouteImport.update({
@@ -77,9 +89,11 @@ export interface FileRoutesByFullPath {
   '/cadastro': typeof CadastroRoute
   '/configuracoes': typeof ConfiguracoesRoute
   '/login': typeof LoginRoute
+  '/noticias': typeof NoticiasRoute
   '/ordens': typeof OrdensRoute
   '/reparos': typeof ReparosRoute
   '/reservas': typeof ReservasRoute
+  '/sobre-criador': typeof SobreCriadorRoute
   '/supervisao': typeof SupervisaoRoute
   '/usuarios': typeof UsuariosRoute
 }
@@ -89,9 +103,11 @@ export interface FileRoutesByTo {
   '/cadastro': typeof CadastroRoute
   '/configuracoes': typeof ConfiguracoesRoute
   '/login': typeof LoginRoute
+  '/noticias': typeof NoticiasRoute
   '/ordens': typeof OrdensRoute
   '/reparos': typeof ReparosRoute
   '/reservas': typeof ReservasRoute
+  '/sobre-criador': typeof SobreCriadorRoute
   '/supervisao': typeof SupervisaoRoute
   '/usuarios': typeof UsuariosRoute
 }
@@ -102,9 +118,11 @@ export interface FileRoutesById {
   '/cadastro': typeof CadastroRoute
   '/configuracoes': typeof ConfiguracoesRoute
   '/login': typeof LoginRoute
+  '/noticias': typeof NoticiasRoute
   '/ordens': typeof OrdensRoute
   '/reparos': typeof ReparosRoute
   '/reservas': typeof ReservasRoute
+  '/sobre-criador': typeof SobreCriadorRoute
   '/supervisao': typeof SupervisaoRoute
   '/usuarios': typeof UsuariosRoute
 }
@@ -116,9 +134,11 @@ export interface FileRouteTypes {
     | '/cadastro'
     | '/configuracoes'
     | '/login'
+    | '/noticias'
     | '/ordens'
     | '/reparos'
     | '/reservas'
+    | '/sobre-criador'
     | '/supervisao'
     | '/usuarios'
   fileRoutesByTo: FileRoutesByTo
@@ -128,9 +148,11 @@ export interface FileRouteTypes {
     | '/cadastro'
     | '/configuracoes'
     | '/login'
+    | '/noticias'
     | '/ordens'
     | '/reparos'
     | '/reservas'
+    | '/sobre-criador'
     | '/supervisao'
     | '/usuarios'
   id:
@@ -140,9 +162,11 @@ export interface FileRouteTypes {
     | '/cadastro'
     | '/configuracoes'
     | '/login'
+    | '/noticias'
     | '/ordens'
     | '/reparos'
     | '/reservas'
+    | '/sobre-criador'
     | '/supervisao'
     | '/usuarios'
   fileRoutesById: FileRoutesById
@@ -153,9 +177,11 @@ export interface RootRouteChildren {
   CadastroRoute: typeof CadastroRoute
   ConfiguracoesRoute: typeof ConfiguracoesRoute
   LoginRoute: typeof LoginRoute
+  NoticiasRoute: typeof NoticiasRoute
   OrdensRoute: typeof OrdensRoute
   ReparosRoute: typeof ReparosRoute
   ReservasRoute: typeof ReservasRoute
+  SobreCriadorRoute: typeof SobreCriadorRoute
   SupervisaoRoute: typeof SupervisaoRoute
   UsuariosRoute: typeof UsuariosRoute
 }
@@ -197,6 +223,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/noticias': {
+      id: '/noticias'
+      path: '/noticias'
+      fullPath: '/noticias'
+      preLoaderRoute: typeof NoticiasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/ordens': {
       id: '/ordens'
       path: '/ordens'
@@ -216,6 +249,13 @@ declare module '@tanstack/react-router' {
       path: '/reservas'
       fullPath: '/reservas'
       preLoaderRoute: typeof ReservasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sobre-criador': {
+      id: '/sobre-criador'
+      path: '/sobre-criador'
+      fullPath: '/sobre-criador'
+      preLoaderRoute: typeof SobreCriadorRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/supervisao': {
@@ -241,9 +281,11 @@ const rootRouteChildren: RootRouteChildren = {
   CadastroRoute: CadastroRoute,
   ConfiguracoesRoute: ConfiguracoesRoute,
   LoginRoute: LoginRoute,
+  NoticiasRoute: NoticiasRoute,
   OrdensRoute: OrdensRoute,
   ReparosRoute: ReparosRoute,
   ReservasRoute: ReservasRoute,
+  SobreCriadorRoute: SobreCriadorRoute,
   SupervisaoRoute: SupervisaoRoute,
   UsuariosRoute: UsuariosRoute,
 }

@@ -158,12 +158,19 @@ registrarEstadoApp("os", {
   legacyKey: KEY,
 });
 
-function nextOSId(): string {
-  const max = state.ordens.reduce((acc, o) => {
-    const n = parseInt(o.id.replace(/\D/g, ""), 10);
+/** Gera o próximo número no formato OS-AAAA-NNN, reiniciando a sequência a cada ano. */
+export function proximoNumeroOS(idsExistentes: string[], ano = new Date().getFullYear()): string {
+  const prefixo = `OS-${ano}-`;
+  const max = idsExistentes.reduce((acc, id) => {
+    if (!id.startsWith(prefixo)) return acc;
+    const n = parseInt(id.slice(prefixo.length), 10);
     return Number.isNaN(n) ? acc : Math.max(acc, n);
-  }, 2481);
-  return `OS-${max + 1}`;
+  }, 0);
+  return `${prefixo}${String(max + 1).padStart(3, "0")}`;
+}
+
+function nextOSId(): string {
+  return proximoNumeroOS(state.ordens.map((o) => o.id));
 }
 
 export function nowBR(): string {

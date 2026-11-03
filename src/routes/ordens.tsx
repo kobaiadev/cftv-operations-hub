@@ -4,6 +4,7 @@ import {
   ClipboardList,
   Download,
   FileText,
+  Eye,
   ImageUp,
   Link2,
   Loader2,
@@ -548,6 +549,8 @@ function OrdensPage() {
       setCarregandoEdicao(false);
     }
   };
+
+  const [visualizando, setVisualizando] = useState<OS | null>(null);
 
   const baixarPdf = async (os: OS) => {
     if (!podeExportar) return;
@@ -1339,6 +1342,16 @@ function OrdensPage() {
                       )}
                     </Button>
                     <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setVisualizando(o)}
+                      aria-label={`Visualizar ${o.id}`}
+                      title={`Visualizar ${o.id}`}
+                    >
+                      <Eye />
+                    </Button>
+                    <Button
                       hidden={!podeExportar}
                       type="button"
                       variant="ghost"
@@ -1836,6 +1849,57 @@ function OrdensPage() {
                 </DialogFooter>
               </form>
             ))}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={visualizando !== null} onOpenChange={(aberto) => !aberto && setVisualizando(null)}>
+        <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
+          {visualizando && (
+            <>
+              <DialogHeader>
+                <DialogTitle>Ordem de Serviço {visualizando.id}</DialogTitle>
+                <DialogDescription>Visualização somente leitura.</DialogDescription>
+              </DialogHeader>
+              <dl className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
+                {([
+                  ["Data", visualizando.data],
+                  ["Status", visualizando.status],
+                  ["Loja", visualizando.loja],
+                  ["Setor", visualizando.setor],
+                  ["Ocorrência", visualizando.ocorrencia],
+                  ["Gravidade", visualizando.gravidade],
+                  ["Reserva CFTV", visualizando.reserva ? `${visualizando.reserva.numero} (${visualizando.reserva.vinculadaEm})` : "Não vinculada"],
+                  ["Boletim de Ocorrência", visualizando.bo ? `${visualizando.bo.numero} — ${visualizando.bo.delegacia} (${visualizando.bo.data})` : "Não informado"],
+                ] as const).map(([rotulo, valor]) => (
+                  <div key={rotulo}>
+                    <dt className="text-xs uppercase tracking-wide text-muted-foreground">{rotulo}</dt>
+                    <dd className="font-medium">{valor || "—"}</dd>
+                  </div>
+                ))}
+                <div className="sm:col-span-2">
+                  <dt className="text-xs uppercase tracking-wide text-muted-foreground">Descrição</dt>
+                  <dd className="whitespace-pre-wrap">{visualizando.descricao || "—"}</dd>
+                </div>
+                {visualizando.dadosAdicionais && (
+                  <div className="sm:col-span-2">
+                    <dt className="text-xs uppercase tracking-wide text-muted-foreground">Dados adicionais</dt>
+                    <dd className="whitespace-pre-wrap">{visualizando.dadosAdicionais}</dd>
+                  </div>
+                )}
+              </dl>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setVisualizando(null)}>
+                  Fechar
+                </Button>
+                {podeExportar && (
+                  <Button type="button" disabled={baixandoPdf !== null} onClick={() => void baixarPdf(visualizando)}>
+                    {baixandoPdf === visualizando.id ? <Loader2 className="animate-spin" /> : <Download />}
+                    Gerar PDF
+                  </Button>
+                )}
+              </DialogFooter>
+            </>
+          )}
         </DialogContent>
       </Dialog>
     </div>

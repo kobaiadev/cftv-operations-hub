@@ -192,12 +192,12 @@ function AuthenticatedRoot() {
       <div className="flex min-h-screen w-full">
         <AppSidebar />
         <div className="flex min-w-0 flex-1 flex-col">
-          <header className="app-topbar sticky top-0 z-10 flex h-14 items-center gap-3 border-b border-border bg-background/80 px-4 pr-16 backdrop-blur-xl">
+          <header className="app-topbar sticky top-0 z-10 flex h-14 items-center gap-3 border-b border-border bg-background/80 px-3 pr-36 backdrop-blur-xl sm:px-4 lg:pr-[208px]">
             <SidebarTrigger />
-            <span className="text-sm text-muted-foreground">
+            <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">
               Sistema de Controle de OS e Reservas CFTV
             </span>
-            <span className="ml-auto hidden items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-xs font-medium text-primary sm:inline-flex">
+            <span className="ml-auto hidden items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-xs font-medium text-primary lg:inline-flex">
               <span className="size-1.5 rounded-full bg-primary" />
               Segurança Patrimonial
             </span>

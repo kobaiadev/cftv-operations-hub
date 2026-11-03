@@ -222,6 +222,8 @@
 .app-content {
   position: relative;
   isolation: isolate;
+  min-width: 0;
+  overflow-x: clip;
   background:
     radial-gradient(
       ellipse at 92% 0%,
@@ -267,6 +269,19 @@
 
 .app-content :is(h1, h2, h3) {
   text-wrap: pretty;
+}
+
+.app-content :is(p, a, span, li) {
+  overflow-wrap: anywhere;
+}
+
+.app-content :is(section, article, form, header, footer) {
+  min-width: 0;
+}
+
+.app-content :is(img, video, canvas) {
+  max-width: 100%;
+  height: auto;
 }
 
 .app-content [class*="rounded-xl"][class*="border"][class*="bg-card"] {

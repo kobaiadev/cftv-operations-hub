@@ -112,7 +112,7 @@ function SobreCriadorPage() {
               Segurança · Dados · Tecnologia
             </Badge>
           </div>
-          <div className="grid gap-8 lg:grid-cols-[1fr_auto] lg:items-center">
+          <div className="grid min-w-0 gap-8 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-center">
             <div className="flex flex-col gap-6 sm:flex-row sm:items-center">
               <div
                 aria-hidden="true"
@@ -125,7 +125,7 @@ function SobreCriadorPage() {
                 <p className="text-sm font-medium text-muted-foreground">
                   Segurança e tecnologia aplicadas ao negócio
                 </p>
-                <h1 className="mt-1 text-4xl font-bold tracking-tight sm:text-5xl">
+                <h1 className="mt-1 text-3xl font-bold tracking-tight sm:text-4xl xl:text-5xl">
                   Daniel da Silva Lima
                 </h1>
                 <p className="mt-3 max-w-3xl text-base leading-7 text-muted-foreground sm:text-lg">
@@ -144,7 +144,7 @@ function SobreCriadorPage() {
                 </div>
               </div>
             </div>
-            <div className="grid grid-cols-3 gap-2 sm:gap-3 lg:w-64 lg:grid-cols-1">
+            <div className="grid grid-cols-1 gap-2 min-[480px]:grid-cols-3 sm:gap-3 xl:w-64 xl:grid-cols-1">
               {[
                 { valor: "17+", rotulo: "anos de experiência" },
                 { valor: "3", rotulo: "áreas integradas" },
@@ -164,7 +164,7 @@ function SobreCriadorPage() {
               ))}
             </div>
           </div>
-          <div className="mt-8 grid gap-6 border-t border-border/80 pt-6 lg:grid-cols-[1fr_auto] lg:items-end">
+          <div className="mt-8 grid min-w-0 gap-6 border-t border-border/80 pt-6 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-end">
             <div>
               <p className="max-w-4xl text-base leading-7 text-muted-foreground sm:text-lg sm:leading-8">
                 Profissional com mais de 17 anos de experiência no serviço público do Estado do Rio
@@ -283,10 +283,10 @@ function SobreCriadorPage() {
             Segurança operacional, tecnologia e inteligência de dados em uma carreira integrada.
           </p>
         </div>
-        <div className="relative grid gap-3 md:grid-cols-5">
+        <div className="relative grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
           <div
             aria-hidden="true"
-            className="absolute left-5 top-6 hidden h-px w-[calc(100%-2.5rem)] bg-gradient-to-r from-primary/50 via-primary/20 to-transparent md:block"
+            className="absolute left-5 top-6 hidden h-px w-[calc(100%-2.5rem)] bg-gradient-to-r from-primary/50 via-primary/20 to-transparent 2xl:block"
           />
           {trajetoria.map((etapa, indice) => (
             <article

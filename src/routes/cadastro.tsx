@@ -64,7 +64,7 @@ function CadastroPage() {
         </p>
       </div>
       <Tabs defaultValue="lojas">
-        <TabsList className="flex-wrap h-auto">
+        <TabsList className="h-auto w-full flex-wrap justify-start gap-1">
           <TabsTrigger value="lojas">
             <Store /> Lojas
           </TabsTrigger>
@@ -128,7 +128,7 @@ function Panel({
 }) {
   return (
     <div
-      className={`rounded-lg border border-border bg-card shadow-card ${oculto ? "hidden" : ""}`}
+      className={`min-w-0 rounded-lg border border-border bg-card shadow-card ${oculto ? "hidden" : ""}`}
     >
       <div className="border-b border-border px-5 py-4 font-semibold">{title}</div>
       {children}
@@ -175,7 +175,13 @@ function LojasTab() {
   };
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[360px_1fr]">
+    <div
+      className={
+        podeAlterar
+          ? "grid gap-6 xl:grid-cols-[minmax(0,360px)_minmax(0,1fr)]"
+          : "grid gap-6"
+      }
+    >
       <Panel oculto={!podeAlterar} title={editId ? "Editar loja" : "Nova loja"}>
         <form onSubmit={submit} className="space-y-4 p-5">
           <Field label="Nome da loja" error={errors["nome"]}>
@@ -272,7 +278,7 @@ function LojasTab() {
         </form>
       </Panel>
       <Panel title={`Lojas cadastradas (${lojas.length})`}>
-        <Table>
+        <Table className="min-w-[440px] sm:min-w-[620px] md:min-w-[760px]">
           <TableHeader>
             <TableRow className="hover:bg-transparent">
               <TableHead className="pl-5">Nome</TableHead>
@@ -385,7 +391,13 @@ function PessoasTab({ funcao, label, plural }: { funcao: Funcao; label: string; 
   };
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[360px_1fr]">
+    <div
+      className={
+        podeAlterar
+          ? "grid gap-6 xl:grid-cols-[minmax(0,360px)_minmax(0,1fr)]"
+          : "grid gap-6"
+      }
+    >
       <Panel oculto={!podeAlterar} title={editId ? `Editar ${label.toLowerCase()}` : `Novo ${label.toLowerCase()}`}>
         <form onSubmit={submit} className="space-y-4 p-5">
           <Field label="Nome completo" error={errors["nome"]}>
@@ -460,7 +472,7 @@ function PessoasTab({ funcao, label, plural }: { funcao: Funcao; label: string; 
             </Field>
           </div>
         )}
-        <Table>
+        <Table className="min-w-[480px] sm:min-w-[620px]">
           <TableHeader>
             <TableRow className="hover:bg-transparent">
               <TableHead className="pl-5">Nome</TableHead>
@@ -547,7 +559,13 @@ function EmpresasTab() {
   };
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[360px_1fr]">
+    <div
+      className={
+        podeAlterar
+          ? "grid gap-6 xl:grid-cols-[minmax(0,360px)_minmax(0,1fr)]"
+          : "grid gap-6"
+      }
+    >
       <Panel oculto={!podeAlterar} title={editId ? "Editar empresa" : "Cadastro de empresa"}>
         <form onSubmit={submit} className="space-y-4 p-5">
           <Field label="Nome da empresa" error={erros["nome"]}>
@@ -573,7 +591,7 @@ function EmpresasTab() {
         </form>
       </Panel>
       <Panel title={`Empresas cadastradas (${empresas.length})`}>
-        <Table>
+        <Table className="min-w-[560px]">
           <TableHeader>
             <TableRow>
               <TableHead className="pl-5">Nome da empresa</TableHead>
@@ -665,7 +683,13 @@ function SupervisoresTab() {
   };
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[360px_1fr]">
+    <div
+      className={
+        podeAlterar
+          ? "grid gap-6 xl:grid-cols-[minmax(0,360px)_minmax(0,1fr)]"
+          : "grid gap-6"
+      }
+    >
       <Panel oculto={!podeAlterar} title={editId ? "Editar supervisor" : "Cadastro de supervisores"}>
         <form onSubmit={submit} className="space-y-4 p-5">
           <Field label="Vínculo" error={erros["tipo"]}>
@@ -740,7 +764,7 @@ function SupervisoresTab() {
         </form>
       </Panel>
       <Panel title={`Supervisores cadastrados (${supervisores.length})`}>
-        <Table>
+        <Table className="min-w-[480px]">
           <TableHeader>
             <TableRow>
               <TableHead className="pl-5">Nome</TableHead>

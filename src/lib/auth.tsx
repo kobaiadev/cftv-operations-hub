@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useRouter } from "@tanstack/react-router";
 import { obterClienteSupabase } from "@/lib/supabase";
+import { sincronizarEstadoApp } from "@/lib/app-state";
 import "@/lib/os-store";
 import "@/lib/cadastro-store";
 import "@/lib/supervisao-store";
@@ -80,6 +81,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setError("Esta conta ainda não possui um nível de acesso atribuído.");
       return;
     }
+    await sincronizarEstadoApp(userProfile.role, userId);
+    if (!isCurrent()) return;
     setProfile(userProfile);
     setError(null);
   };

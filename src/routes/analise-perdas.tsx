@@ -93,6 +93,8 @@ function AnalisePerdasPage() {
   const [erroPlanilha, setErroPlanilha] = useState("");
   const [lendoPlanilha, setLendoPlanilha] = useState(false);
   const [carregandoDados, setCarregandoDados] = useState(false);
+  const [salvando, setSalvando] = useState(false);
+  const [dadosSalvos, setDadosSalvos] = useState(false);
   const lojaPorId = new Map(lojas.map((loja) => [loja.id, loja.nome]));
   const ordenadas = [...perdas].sort(
     (a, b) =>
@@ -102,9 +104,9 @@ function AnalisePerdasPage() {
   );
   const cobertura = resumirCoberturaPerdas(perdas, lojas);
 
-  const submit = (event: FormEvent<HTMLFormElement>) => {
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!podeAlterar) return;
+    if (!podeAlterar || salvando || carregandoDados) return;
     const resultado = schema.safeParse(form);
     if (!resultado.success) {
       setErrors(
@@ -113,16 +115,20 @@ function AnalisePerdasPage() {
       return;
     }
 
+    setSalvando(true);
     try {
-      if (editId) updatePerda(editId, resultado.data);
-      else addPerda(resultado.data);
+      if (editId) await updatePerda(editId, resultado.data);
+      else await addPerda(resultado.data);
       setEditId(null);
       setForm({ ...form, valor: "" });
       setErrors({});
-      toast.success("Valor de perda registrado.");
+      setDadosSalvos(true);
+      toast.success("Valor de perda salvo e disponível no Dashboard.");
     } catch (erro) {
       const mensagem = erro instanceof Error ? erro.message : "Não foi possível registrar o valor.";
       toast.error(mensagem);
+    } finally {
+      setSalvando(false);
     }
   };
 
@@ -169,21 +175,22 @@ function AnalisePerdasPage() {
     }
   };
 
-  const carregarPlanilha = () => {
+  const carregarPlanilha = async () => {
     if (!podeAlterar) return;
-    if (!previa) return;
+    if (!previa || carregandoDados || salvando) return;
     setCarregandoDados(true);
     try {
-      importPerdas(previa.perdas);
-      toast.success(`${previa.perdas.length} registros de perdas carregados no Dashboard.`);
+      await importPerdas(previa.perdas);
+      setDadosSalvos(true);
+      toast.success(`${previa.perdas.length} registros de perdas salvos e disponíveis no Dashboard.`);
       setPrevia(null);
       setArquivoNome("");
       setErroPlanilha("");
     } catch (erro) {
       console.error("Não foi possível carregar os dados da planilha.", erro);
-      toast.error(
-        "Não foi possível carregar os dados. Verifique o espaço disponível e tente novamente.",
-      );
+      const mensagem = erro instanceof Error ? erro.message : "Não foi possível salvar as perdas. Tente novamente.";
+      setErroPlanilha(mensagem);
+      toast.error(mensagem);
     } finally {
       setCarregandoDados(false);
     }
@@ -280,8 +287,8 @@ function AnalisePerdasPage() {
               {errors["valor"] && <p className="text-xs text-destructive">{errors["valor"]}</p>}
             </div>
             <div className="md:col-span-2 xl:col-span-4">
-              <Button type="submit">
-                {editId ? <Save /> : <Plus />} {editId ? "Salvar alterações" : "Registrar valor"}
+              <Button type="submit" disabled={salvando || carregandoDados}>
+                {salvando ? <Loader2 className="animate-spin" /> : editId ? <Save /> : <Plus />} {salvando ? "Salvando..." : editId ? "Salvar alterações" : "Registrar valor"}
               </Button>
               {editId && <Button type="button" variant="outline" className="ml-2" onClick={() => { setEditId(null); setErrors({}); setForm({ lojaId: "", mes: "", ano: String(anoAtual), valor: "" }); }}>Cancelar</Button>}
               <p className="mt-2 text-xs text-muted-foreground">
@@ -315,7 +322,7 @@ function AnalisePerdasPage() {
               <Button
                 type="button"
                 onClick={carregarPlanilha}
-                disabled={!previa || lendoPlanilha || carregandoDados}
+                disabled={!previa || lendoPlanilha || carregandoDados || salvando}
               >
                 {lendoPlanilha || carregandoDados ? (
                   <Loader2 className="animate-spin" />
@@ -326,7 +333,7 @@ function AnalisePerdasPage() {
                   ? "Lendo planilha..."
                   : carregandoDados
                     ? "Carregando dados..."
-                    : "Carregar dados"}
+                    : "Salvar dados da planilha"}
               </Button>
             </div>
           </div>
@@ -351,7 +358,7 @@ function AnalisePerdasPage() {
               <p className="font-medium text-success">Planilha validada e pronta para carregar</p>
               <p className="mt-1 text-sm text-muted-foreground">
                 {previa.linhasLidas} linhas analisadas; nenhum período duplicado ou já registrado.
-                Os valores serão mantidos no armazenamento local do programa após o carregamento.
+                {previa.perdas.length} registros aguardando confirmação.
               </p>
               <div className="mt-3 space-y-2">
                 {resumirCoberturaPerdas([...perdas, ...previa.perdas], lojas).map((item) => (
@@ -376,6 +383,11 @@ function AnalisePerdasPage() {
           )}
         </div>
       </div>
+
+      {dadosSalvos && <div className="flex flex-wrap items-center justify-between gap-3 border-l-2 border-success px-4 py-3">
+        <p className="text-sm text-success">Perdas salvas no sistema.</p>
+        <Button asChild variant="outline"><Link to="/">Abrir Dashboard</Link></Button>
+      </div>}
 
       <div className="rounded-lg border border-border bg-card shadow-card">
         <div className="border-b border-border px-5 py-4">

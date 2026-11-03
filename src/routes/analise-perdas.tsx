@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, type ChangeEvent, type FormEvent } from "react";
 import { z } from "zod";
-import { FileSpreadsheet, Loader2, Plus, Trash2, Upload } from "lucide-react";
+import { FileSpreadsheet, Loader2, Plus, Pencil, Save, Trash2, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -83,7 +83,8 @@ const moeda = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL
 function AnalisePerdasPage() {
   const { profile } = useAuth();
   const podeAlterar = podeEditar(profile?.role);
-  const { lojas, perdas, addPerda, importPerdas, removePerda } = useCadastro();
+  const { lojas, perdas, addPerda, updatePerda, importPerdas, removePerda } = useCadastro();
+  const [editId, setEditId] = useState<string | null>(null);
   const anoAtual = new Date().getFullYear();
   const [form, setForm] = useState({ lojaId: "", mes: "", ano: String(anoAtual), valor: "" });
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -113,7 +114,9 @@ function AnalisePerdasPage() {
     }
 
     try {
-      addPerda(resultado.data);
+      if (editId) updatePerda(editId, resultado.data);
+      else addPerda(resultado.data);
+      setEditId(null);
       setForm({ ...form, valor: "" });
       setErrors({});
       toast.success("Valor de perda registrado.");
@@ -278,8 +281,9 @@ function AnalisePerdasPage() {
             </div>
             <div className="md:col-span-2 xl:col-span-4">
               <Button type="submit">
-                <Plus /> Registrar valor
+                {editId ? <Save /> : <Plus />} {editId ? "Salvar alterações" : "Registrar valor"}
               </Button>
+              {editId && <Button type="button" variant="outline" className="ml-2" onClick={() => { setEditId(null); setErrors({}); setForm({ lojaId: "", mes: "", ano: String(anoAtual), valor: "" }); }}>Cancelar</Button>}
               <p className="mt-2 text-xs text-muted-foreground">
                 Um lançamento por loja, mês e ano. Valores iguais a zero também são aceitos.
               </p>
@@ -442,7 +446,8 @@ function AnalisePerdasPage() {
                   <TableCell className="text-right font-mono">
                     {moeda.format(perda.valor)}
                   </TableCell>
-                  <TableCell className="pr-5 text-right">
+                  <TableCell className="pr-5 text-right whitespace-nowrap">
+                    {podeAlterar && <Button variant="ghost" size="icon" title="Editar" aria-label={`Editar perdas de ${lojaPorId.get(perda.lojaId) ?? "loja"} em ${perda.mes}/${perda.ano}`} onClick={() => { if (!podeAlterar) return; setEditId(perda.id); setForm({ lojaId: perda.lojaId, mes: perda.mes, ano: String(perda.ano), valor: String(perda.valor) }); setErrors({}); window.scrollTo({ top: 0, behavior: "smooth" }); }}><Pencil className="text-primary" /></Button>}
                     <Button
                       hidden={!podeAlterar}
                       type="button"

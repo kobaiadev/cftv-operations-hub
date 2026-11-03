@@ -1,5 +1,5 @@
 # Login repair
-- [ ] Corrigir a restauração de sessões expiradas e verificar acesso real sem alterar senhas ou níveis.
+- [x] Corrigir restauração de sessões expiradas; testes e acesso real ao painel após recarregar verificados, sem alterar senhas ou níveis. Senha pessoal não testada.
 - [x] Incluir as assinaturas compartilhadas da OS ao final do PDF de reparos; download real, teste com anexos e alinhamento visual verificados.
 - [x] Padronizar o PDF de reparos reutilizando o template de OS; download real, acentos e imagens enquadradas verificados.
 - [x] Verify the authentication context survives live preview updates without blanking login.

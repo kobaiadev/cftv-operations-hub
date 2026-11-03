@@ -14,3 +14,9 @@ export function requireAdministrator(role: unknown) {
 export function requireOtherAccount(callerId: string, targetId: string) {
   if (callerId === targetId) throw new Error("Você não pode revogar seu próprio acesso.");
 }
+
+export const accountEditSchema = accountSchema.omit({ senha: true }).extend({ userId: z.string().uuid() });
+
+export function requireSafeAccountEdit(callerId: string, targetId: string, role: string) {
+  if (callerId === targetId && role !== "00") throw new Error("Você não pode reduzir seu próprio nível de administrador.");
+}

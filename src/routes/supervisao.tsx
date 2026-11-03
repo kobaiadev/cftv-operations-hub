@@ -6,6 +6,7 @@ import {
   ExternalLink,
   Loader2,
   MapPin,
+  Pencil,
   Save,
   Trash2,
   UsersRound,
@@ -13,6 +14,7 @@ import {
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -26,7 +28,7 @@ import {
   obterLocalizacaoAtual,
   type LocalizacaoFoto,
 } from "@/lib/supervisao-fotos";
-import { useSupervisoes, type FotoSupervisao } from "@/lib/supervisao-store";
+import { useSupervisoes, type FotoSupervisao, type Supervisao } from "@/lib/supervisao-store";
 import { useCadastro, type TipoSupervisor } from "@/lib/cadastro-store";
 import { podeEditar, useAuth } from "@/lib/auth";
 
@@ -75,7 +77,8 @@ function RelogioAtual() {
 function SupervisaoPage() {
   const { profile } = useAuth();
   const podeAlterar = podeEditar(profile?.role);
-  const { supervisoes, addSupervisao, removeSupervisao } = useSupervisoes();
+  const { supervisoes, addSupervisao, updateSupervisao, removeSupervisao } = useSupervisoes();
+  const [editando, setEditando] = useState<Supervisao | null>(null);
   const { empresas, supervisores } = useCadastro();
   const [nome, setNome] = useState("");
   const [tipo, setTipo] = useState<TipoSupervisor | "">("");
@@ -418,6 +421,8 @@ function SupervisaoPage() {
                       </p>
                     )}
                   </div>
+                  <div className="flex gap-1">
+                  {podeAlterar && <Button variant="ghost" size="icon" title="Editar" aria-label={`Editar registro de ${registro.supervisorNome}`} onClick={() => { if (podeAlterar) setEditando({ ...registro }); }}><Pencil className="text-primary" /></Button>}
                   <Button
                     hidden={!podeAlterar}
                     variant="ghost"
@@ -427,6 +432,7 @@ function SupervisaoPage() {
                   >
                     <Trash2 className="text-destructive" />
                   </Button>
+                  </div>
                 </div>
                 {registro.observacoes && (
                   <p className="mt-3 whitespace-pre-wrap text-sm">{registro.observacoes}</p>
@@ -437,6 +443,27 @@ function SupervisaoPage() {
           </div>
         )}
       </section>
+      <Dialog open={!!editando && podeAlterar} onOpenChange={(open) => { if (!open) setEditando(null); }}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Editar supervisão</DialogTitle><DialogDescription>{editando ? formatarDataHora(editando.dataHora) : ""}</DialogDescription></DialogHeader>
+          {editando && <form className="space-y-4" onSubmit={(e) => {
+            e.preventDefault(); if (!podeAlterar || !editando) return;
+            const supervisor = supervisores.find((s) => s.id === editando.supervisorId);
+            if (!supervisor) { toast.error("Selecione um supervisor cadastrado."); return; }
+            updateSupervisao(editando.id, { supervisorNome: supervisor.nome, supervisorId: supervisor.id, tipoSupervisor: supervisor.tipo, empresaId: supervisor.empresaId, observacoes: editando.observacoes.trim() });
+            setEditando(null);
+          }}>
+            <label className="text-sm font-medium">Supervisor</label>
+            <Select value={editando.supervisorId ?? ""} onValueChange={(id) => setEditando({ ...editando, supervisorId: id })}>
+              <SelectTrigger><SelectValue placeholder="Selecione o supervisor" /></SelectTrigger>
+              <SelectContent>{supervisores.map((s) => <SelectItem key={s.id} value={s.id}>{s.nome} — {s.tipo}</SelectItem>)}</SelectContent>
+            </Select>
+            <label htmlFor="editar-supervisao-observacoes" className="text-sm font-medium">Observações relevantes</label>
+            <Textarea id="editar-supervisao-observacoes" rows={5} value={editando.observacoes} onChange={(e) => setEditando({ ...editando, observacoes: e.target.value })} />
+            <DialogFooter><Button type="button" variant="outline" onClick={() => setEditando(null)}>Cancelar</Button><Button type="submit"><Save /> Salvar alterações</Button></DialogFooter>
+          </form>}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

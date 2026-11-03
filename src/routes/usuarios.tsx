@@ -1,9 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { LoaderCircle, ShieldPlus, Trash2, UsersRound } from "lucide-react";
+import { LoaderCircle, Pencil, Save, ShieldPlus, Trash2, UsersRound } from "lucide-react";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { createAccount, revokeAccountAccess } from "@/lib/accounts.functions";
-import { accountSchema } from "@/lib/account-rules";
+import { createAccount, updateAccount, revokeAccountAccess } from "@/lib/accounts.functions";
+import { accountSchema, accountEditSchema } from "@/lib/account-rules";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -60,8 +60,10 @@ export const Route = createFileRoute("/usuarios")({
 
 function UsuariosPage() {
   const create = useServerFn(createAccount);
+  const update = useServerFn(updateAccount);
   const revoke = useServerFn(revokeAccountAccess);
-  const { profile, loading } = useAuth();
+  const { profile, loading, refreshProfile } = useAuth();
+  const [editId, setEditId] = useState<string | null>(null);
   const [usuarios, setUsuarios] = useState<ManagedUser[]>([]);
   const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
@@ -119,15 +121,23 @@ function UsuariosPage() {
     event.preventDefault();
     setSalvando(true);
     try {
-      const input = accountSchema.safeParse({ nome, email, senha, nivel });
-      if (!input.success) throw new Error("Verifique nome, e-mail, senha e nível de acesso.");
-      await create({ data: input.data });
+      if (!ehAdministrador(profile?.role)) throw new Error("Acesso não autorizado.");
+      if (editId) {
+        const input = accountEditSchema.parse({ userId: editId, nome, email, nivel });
+        await update({ data: input });
+        if (editId === profile.user_id) await refreshProfile();
+      } else {
+        const input = accountSchema.safeParse({ nome, email, senha, nivel });
+        if (!input.success) throw new Error("Verifique nome, e-mail, senha e nível de acesso.");
+        await create({ data: input.data });
+      }
 
       setNome("");
       setEmail("");
       setSenha("");
       setNivel("03");
-      toast.success("Usuário criado e nível de acesso atribuído.");
+      toast.success(editId ? "Cadastro do usuário atualizado." : "Usuário criado e nível de acesso atribuído.");
+      setEditId(null);
       await carregarUsuarios();
     } catch (error) {
       console.error("Erro ao criar usuário do sistema.", error);
@@ -178,7 +188,7 @@ function UsuariosPage() {
       <section className="rounded-xl border border-border bg-card p-5 shadow-card sm:p-6">
         <div className="mb-5 flex items-center gap-2">
           <ShieldPlus className="size-5 text-primary" />
-          <h2 className="font-semibold">Criar usuário</h2>
+          <h2 className="font-semibold">{editId ? "Editar usuário" : "Criar usuário"}</h2>
         </div>
         <form className="grid gap-4 md:grid-cols-2" onSubmit={criarUsuario}>
           <div className="space-y-2">
@@ -209,7 +219,7 @@ function UsuariosPage() {
               placeholder="usuario@nagumo.com.br"
             />
           </div>
-          <div className="space-y-2">
+          {!editId && <div className="space-y-2">
             <label htmlFor="usuario-senha" className="text-sm font-medium">
               Senha inicial
             </label>
@@ -226,7 +236,7 @@ function UsuariosPage() {
             <p className="text-xs text-muted-foreground">
               Use uma senha exclusiva e compartilhe-a por um canal seguro.
             </p>
-          </div>
+          </div>}
           <div className="space-y-2">
             <label htmlFor="usuario-nivel" className="text-sm font-medium">
               Nível de Acesso
@@ -245,9 +255,10 @@ function UsuariosPage() {
             </Select>
           </div>
           <div className="md:col-span-2 md:flex md:justify-end">
+            {editId && <Button type="button" variant="outline" className="mr-2" disabled={salvando} onClick={() => { setEditId(null); setNome(""); setEmail(""); setSenha(""); setNivel("03"); }}>Cancelar</Button>}
             <Button type="submit" disabled={salvando} className="w-full md:w-auto">
               {salvando ? <LoaderCircle className="animate-spin" /> : <ShieldPlus />}
-              {salvando ? "Criando usuário..." : "Criar usuário"}
+              {salvando ? "Salvando..." : editId ? "Salvar alterações" : "Criar usuário"}
             </Button>
           </div>
         </form>
@@ -286,7 +297,8 @@ function UsuariosPage() {
                       {NIVEIS_ACESSO.find((item) => item.value === usuario.role)?.label ??
                         `Nível ${usuario.role}`}
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right whitespace-nowrap">
+                      <Button type="button" variant="ghost" size="icon" title="Editar" aria-label={`Editar ${usuario.email}`} disabled={salvando} onClick={() => { if (!ehAdministrador(profile?.role)) return; setEditId(usuario.user_id); setNome(usuario.display_name); setEmail(usuario.email); setNivel(usuario.role); setSenha(""); window.scrollTo({ top: 0, behavior: "smooth" }); }}><Pencil className="text-primary" /></Button>
                       <Button
                         type="button"
                         variant="destructive"

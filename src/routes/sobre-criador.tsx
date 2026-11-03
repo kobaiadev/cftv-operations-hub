@@ -19,6 +19,10 @@ export const Route = createFileRoute("/sobre-criador")({
   head: () => ({
     meta: [
       { title: "Sobre o Criador — Segurança Patrimonial Nagumo" },
+      { property: "og:title", content: "Sobre o Criador — Segurança Patrimonial Nagumo" },
+      { property: "og:description", content: "Conheça a trajetória, as áreas de atuação, a formação e as tecnologias de Daniel da Silva Lima." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
       {
         name: "description",
         content:

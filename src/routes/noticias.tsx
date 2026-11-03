@@ -21,6 +21,10 @@ export const Route = createFileRoute("/noticias")({
   head: () => ({
     meta: [
       { title: "Notícias — Segurança Patrimonial Nagumo" },
+      { property: "og:title", content: "Notícias — Segurança Patrimonial Nagumo" },
+      { property: "og:description", content: "Notícias sobre segurança privada, segurança patrimonial, prevenção de perdas, varejo e CFTV." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
       {
         name: "description",
         content:

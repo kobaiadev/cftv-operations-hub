@@ -20,6 +20,7 @@ import { AuthProvider, useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Toaster } from "@/components/ui/sonner";
 import { WhatsAppFloat } from "@/components/whatsapp-float";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 function NotFoundComponent() {
   return (
@@ -144,6 +145,7 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <AuthenticatedRoot />
+        <ThemeToggle />
         <WhatsAppFloat />
         <Toaster />
       </AuthProvider>
@@ -192,7 +194,7 @@ function AuthenticatedRoot() {
       <div className="flex min-h-screen w-full">
         <AppSidebar />
         <div className="flex min-w-0 flex-1 flex-col">
-          <header className="app-topbar sticky top-0 z-10 flex h-14 items-center gap-3 border-b border-border bg-background/80 px-3 pr-36 backdrop-blur-xl sm:px-4 lg:pr-[208px]">
+          <header className="app-topbar sticky top-0 z-10 flex h-14 items-center gap-3 border-b border-border bg-background/80 pl-3 pr-[196px] backdrop-blur-xl sm:pl-4 lg:pr-[272px]">
             <SidebarTrigger />
             <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">
               Sistema de Controle de OS e Reservas CFTV

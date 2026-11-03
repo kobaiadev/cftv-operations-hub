@@ -1,4 +1,5 @@
 # Login repair
+- [x] Consultar a paleta oficial Nagumo e incluir alternância claro/escuro no topo; aparência clara com branco, vermelho, marinho e turquesa, escura preservada, escolha mantida após recarregar e página Notícias verificada com acesso real, sem erros.
 - [x] Corrigir confirmação de armazenamento das perdas manuais/importadas, ordenar gravações e verificar importação XLSX até o Dashboard após recarregar; total de teste R$ 1.234,56 confirmado, registro temporário removido e 18 testes passaram. Nenhuma perda anterior estava salva; planilha original não disponível nesta sessão.
 - [x] Cadastrar as nove lojas fornecidas com gerentes, endereços, cidades e estados, sem duplicar registros existentes; preservado endereço completo da loja 36 e nove lojas verificadas na tela.
 - [x] Adicionar edição a todos os cadastros existentes, respeitando níveis de acesso; regra futura registrada, empresa e usuário salvos e relidos após recarregar, 19 testes passaram. Supervisão preserva fotos e data originais na edição.

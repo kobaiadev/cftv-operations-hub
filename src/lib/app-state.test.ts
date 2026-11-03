@@ -25,4 +25,17 @@ describe("persistência compartilhada", () => {
     await expect(salvarEstadoApp("cadastro", {})).rejects.toThrow("Sua sessão expirou");
     expect(mocks.upsert).not.toHaveBeenCalled();
   });
+  it("salva snapshots na ordem de chegada sem sobrescrever o mais novo com o antigo", async () => {
+    let liberar: (() => void) | undefined;
+    mocks.upsert.mockImplementationOnce(() => new Promise(resolve => {
+      liberar = () => resolve({ error: null });
+    }));
+    const primeiro = salvarEstadoApp("cadastro", { perdas: [10] });
+    const segundo = salvarEstadoApp("cadastro", { perdas: [10, 20] });
+    await vi.waitFor(() => expect(mocks.upsert).toHaveBeenCalledTimes(1));
+    expect(mocks.upsert.mock.calls[0]?.[0].data).toEqual({ perdas: [10] });
+    liberar?.();
+    await Promise.all([primeiro, segundo]);
+    expect(mocks.upsert.mock.calls[1]?.[0].data).toEqual({ perdas: [10, 20] });
+  });
 });

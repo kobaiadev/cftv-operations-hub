@@ -110,12 +110,12 @@ function load() {
     console.error("Não foi possível carregar os dados do cadastro.", error);
   }
 }
-function set(next: State) {
+function set(next: State, confirmar = false) {
   const anterior = state;
   const versao = ++persistVersion;
   state = next;
   listeners.forEach((l) => l());
-  void salvarEstadoApp("cadastro", next).catch((error: unknown) => {
+  return salvarEstadoApp("cadastro", next).catch((error: unknown) => {
     console.error("Não foi possível persistir os dados de cadastro.", error);
     if (persistVersion === versao) {
       state = anterior;
@@ -128,6 +128,7 @@ function set(next: State) {
         }),
       );
     }
+    if (confirmar) throw error;
   });
 }
 
@@ -230,10 +231,10 @@ export function useCadastro() {
       if (existente) {
         throw new Error("Já existe um lançamento de perdas para esta loja, mês e ano.");
       }
-      set({
+      return set({
         ...state,
         perdas: [{ ...p, id: uid() }, ...state.perdas],
-      });
+      }, true);
     },
     importPerdas: (lancamentos: Omit<Perda, "id">[]) => {
       const chavesImportadas = new Set<string>();
@@ -249,16 +250,16 @@ export function useCadastro() {
         }
         chavesImportadas.add(chave);
       }
-      set({
+      return set({
         ...state,
         perdas: [...lancamentos.map((perda) => ({ ...perda, id: uid() })), ...state.perdas],
-      });
+      }, true);
     },
     updatePerda: (id: string, p: Omit<Perda, "id">) => {
       if (state.perdas.some((x) => x.id !== id && x.lojaId === p.lojaId && x.mes === p.mes && x.ano === p.ano)) {
         throw new Error("Já existe um lançamento de perdas para esta loja, mês e ano.");
       }
-      set({ ...state, perdas: state.perdas.map((x) => x.id === id ? { ...p, id } : x) });
+      return set({ ...state, perdas: state.perdas.map((x) => x.id === id ? { ...p, id } : x) }, true);
     },
     removePerda: (id: string) => set({ ...state, perdas: state.perdas.filter((p) => p.id !== id) }),
   };

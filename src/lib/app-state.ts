@@ -85,7 +85,19 @@ export async function sincronizarEstadoApp(role: string, userId: string) {
   if (role === "00" || role === "01") await migrarArquivosLegados();
 }
 
-export async function salvarEstadoApp(namespace: AppNamespace, data: unknown) {
+const gravacoes = new Map<AppNamespace, Promise<void>>();
+
+export function salvarEstadoApp(namespace: AppNamespace, data: unknown): Promise<void> {
+  const anterior = gravacoes.get(namespace) ?? Promise.resolve();
+  const atual = anterior.catch(() => {}).then(() => gravarEstadoApp(namespace, data));
+  gravacoes.set(namespace, atual);
+  void atual.finally(() => {
+    if (gravacoes.get(namespace) === atual) gravacoes.delete(namespace);
+  }).catch(() => {});
+  return atual;
+}
+
+async function gravarEstadoApp(namespace: AppNamespace, data: unknown) {
   const { data: authData, error: authError } = await obterClienteSupabase().auth.getUser();
   if (authError || !authData.user) {
     throw new Error("Sua sessão expirou. Entre novamente para salvar as alterações.");

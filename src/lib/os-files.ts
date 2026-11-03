@@ -30,23 +30,12 @@ async function obterAnexos(entityType: AttachmentRow["entity_type"], entityId: s
   return (data ?? []) as AttachmentRow[];
 }
 
-async function baixarConteudoParaVisualizacao(id: string) {
-  const supabase = obterClienteSupabase();
-  const { data, error } = await supabase.auth.getSession();
-  const session = data.session;
-  const url = import.meta.env.NEXT_PUBLIC_SUPABASE_URL;
-  const apiKey = import.meta.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-  if (error || !session || !url || !apiKey) {
-    throw new Error("Sua sessão expirou; entre novamente para abrir este anexo.");
+async function baixarConteudoParaVisualizacao(storagePath: string) {
+  const { data, error } = await obterClienteSupabase().storage.from(BUCKET).download(storagePath);
+  if (error || !data) {
+    throw new Error(`Não foi possível carregar o anexo: ${error?.message ?? "Arquivo não encontrado."}`);
   }
-  const response = await fetch(`${url}/functions/v1/view-attachment?id=${encodeURIComponent(id)}`, {
-    headers: { Authorization: `Bearer ${session.access_token}`, apikey: apiKey },
-  });
-  if (!response.ok) {
-    const mensagem = await response.text();
-    throw new Error(mensagem || "Não foi possível carregar o anexo.");
-  }
-  return response.blob();
+  return data;
 }
 
 function blobParaDataUrl(blob: Blob): Promise<string> {
@@ -173,7 +162,7 @@ export async function lerAnexos(osId: string): Promise<Anexo[]> {
       rotulo: row.label,
       nome: row.file_name,
       tipo: row.content_type,
-      dataUrl: await blobParaDataUrl(await baixarConteudoParaVisualizacao(row.id)),
+      dataUrl: await blobParaDataUrl(await baixarConteudoParaVisualizacao(row.storage_path)),
     })),
   );
 }
@@ -221,7 +210,7 @@ export async function lerFotosSupervisao(supervisaoId: string): Promise<Blob[]> 
   const rows = await obterAnexos("supervisao", supervisaoId);
   return Promise.all(
     rows.map(async (row) => {
-      return baixarConteudoParaVisualizacao(row.id);
+      return baixarConteudoParaVisualizacao(row.storage_path);
     }),
   );
 }

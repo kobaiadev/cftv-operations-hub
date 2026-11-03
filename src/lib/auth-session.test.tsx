@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   getUser: vi.fn(), getSession: vi.fn(), signOut: vi.fn(),
   maybeSingle: vi.fn(), invalidate: vi.fn(), invalidateQueries: vi.fn(),
   callback: undefined as ((event: string, session: unknown) => void) | undefined,
+  sync: vi.fn(),
 }));
 vi.mock("@/lib/supabase", () => ({ obterClienteSupabase: () => ({
   auth: {
@@ -21,6 +22,7 @@ vi.mock("@/lib/supabase", () => ({ obterClienteSupabase: () => ({
 vi.mock("@/lib/os-store", () => ({}));
 vi.mock("@/lib/cadastro-store", () => ({}));
 vi.mock("@/lib/supervisao-store", () => ({}));
+vi.mock("@/lib/app-state", () => ({ sincronizarEstadoApp: mocks.sync }));
 const router = { invalidate: mocks.invalidate };
 const queryClient = { invalidateQueries: mocks.invalidateQueries };
 const navigate = vi.fn();
@@ -37,6 +39,7 @@ function State() {
 describe("session restoration", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.sync.mockResolvedValue(undefined);
     mocks.signOut.mockImplementation(async () => {
       mocks.callback?.("SIGNED_OUT", null);
       return { error: null };
@@ -64,6 +67,7 @@ describe("session restoration", () => {
     mocks.getSession.mockResolvedValue({ data: { session }, error: null });
     act(() => mocks.callback?.("SIGNED_IN", session));
     await waitFor(() => expect(screen.getByText("signed-in:03")).toBeInTheDocument());
+    expect(mocks.sync).toHaveBeenCalledWith("03", "user-1");
   });
 
   it("keeps the form available when no session exists", async () => {

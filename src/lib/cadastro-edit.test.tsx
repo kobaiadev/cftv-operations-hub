@@ -37,18 +37,18 @@ describe("edição dos cadastros", () => {
     });
     expect(result.current.perdas.map(p => p.valor)).toEqual([10, 20]);
   });
-  it("atualiza pessoas, empresas e supervisores sem duplicar nem trocar IDs", () => {
+  it("atualiza pessoas, empresas e supervisores sem duplicar nem trocar IDs", async () => {
     const { result } = renderHook(useCadastro);
-    act(() => result.current.updatePessoa("p", { nome: "Depois", funcao: "seguranca", matricula: "2", lojaId: "l", telefone: "", turno: "Noite" }));
-    act(() => result.current.updateEmpresa("e", { nome: "Depois", cnpj: "12345678901234" }));
-    act(() => result.current.updateSupervisor("s", { nome: "Depois", tipo: "EXTERNO", empresaId: "e" }));
+    await act(async () => { await result.current.updatePessoa("p", { nome: "Depois", funcao: "seguranca", matricula: "2", lojaId: "l", telefone: "", turno: "Noite" }); });
+    await act(async () => { await result.current.updateEmpresa("e", { nome: "Depois", cnpj: "12345678901234" }); });
+    await act(async () => { await result.current.updateSupervisor("s", { nome: "Depois", tipo: "EXTERNO", empresaId: "e" }); });
     expect(result.current.pessoas.map(p => [p.id, p.nome, p.funcao])).toEqual([["p", "Depois", "seguranca"]]);
     expect(result.current.empresas.map(e => [e.id, e.nome])).toEqual([["e", "Depois"]]);
     expect(result.current.supervisores).toEqual([{ id: "s", nome: "Depois", tipo: "EXTERNO", empresaId: "e" }]);
   });
-  it("edita valor mantendo ID e rejeita outro período já cadastrado", () => {
+  it("edita valor mantendo ID e rejeita outro período já cadastrado", async () => {
     const { result } = renderHook(useCadastro);
-    act(() => result.current.updatePerda("v", { lojaId: "l", mes: "01", ano: 2026, valor: 42 }));
+    await act(async () => { await result.current.updatePerda("v", { lojaId: "l", mes: "01", ano: 2026, valor: 42 }); });
     expect(result.current.perdas.find(p => p.id === "v")?.valor).toBe(42);
     expect(() => result.current.updatePerda("v", { lojaId: "l", mes: "02", ano: 2026, valor: 50 })).toThrow("Já existe");
     expect(result.current.perdas).toHaveLength(2);

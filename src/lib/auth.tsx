@@ -65,12 +65,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const loadProfile = async (userId: string) => {
+  const loadProfile = async (userId: string, isCurrent: () => boolean = () => true) => {
     const { data, error: profileError } = await obterClienteSupabase()
       .from("user_roles")
       .select("user_id, display_name, email, role")
       .eq("user_id", userId)
       .maybeSingle();
+    if (!isCurrent()) return;
     if (profileError)
       throw new Error(`Não foi possível carregar o perfil: ${profileError.message}`);
     const userProfile = mapearPerfilUsuario(data);
@@ -90,62 +91,70 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     try {
       const supabase = obterClienteSupabase();
-      const authChange = supabase.auth.onAuthStateChange((event, nextSession) => {
-        if (!["INITIAL_SESSION", "SIGNED_IN", "SIGNED_OUT", "USER_UPDATED"].includes(event)) return;
-        generation += 1;
-        const currentGeneration = generation;
-        setSession(nextSession);
-        setProfile(null);
-        if (event !== "INITIAL_SESSION") {
-          void router.invalidate();
-          if (event !== "SIGNED_OUT") void queryClient.invalidateQueries();
+      const restoreSession = async (currentGeneration: number) => {
+        const isCurrent = () => active && currentGeneration === generation;
+        try {
+          const { data, error: sessionError } = await supabase.auth.getUser();
+          if (!isCurrent()) return;
+          if (sessionError) {
+            if (
+              sessionError.name === "AuthSessionMissingError" ||
+              ["session_not_found", "refresh_token_not_found", "refresh_token_already_used", "user_not_found", "bad_jwt"].includes(sessionError.code ?? "")
+            ) {
+              setSession(null);
+              setProfile(null);
+              setError(null);
+              await supabase.auth.signOut({ scope: "local" });
+              return;
+            }
+            throw sessionError;
+          }
+          if (!data.user) {
+            setSession(null);
+            setProfile(null);
+            setError(null);
+            return;
+          }
+          const { data: sessionData, error: restoreError } = await supabase.auth.getSession();
+          if (!isCurrent()) return;
+          if (restoreError) throw restoreError;
+          setSession(sessionData.session);
+          await loadProfile(data.user.id, isCurrent);
+        } catch (cause: unknown) {
+          if (!isCurrent()) return;
+          console.error("Não foi possível restaurar a sessão do usuário.", cause);
+          setSession(null);
+          setProfile(null);
+          setError("Não foi possível verificar a sessão. Tente entrar novamente.");
+        } finally {
+          if (isCurrent()) setLoading(false);
         }
-        if (!nextSession) {
+      };
+      const authChange = supabase.auth.onAuthStateChange((event) => {
+        // INITIAL_SESSION is only cached storage, not proof of a valid session.
+        if (!active || !["SIGNED_IN", "SIGNED_OUT", "USER_UPDATED"].includes(event)) return;
+        const currentGeneration = ++generation;
+        if (event === "SIGNED_OUT") {
+          setSession(null);
           setProfile(null);
           setError(null);
           setLoading(false);
+          void router.invalidate();
           return;
         }
-
         setLoading(true);
+        // Auth callbacks run under the client's lock; validate after it releases.
         window.setTimeout(() => {
-          void loadProfile(nextSession.user.id)
-            .catch((cause: unknown) => {
-              if (!active || currentGeneration !== generation) return;
-              console.error("Erro ao verificar o nível de acesso do usuário.", cause);
-              setProfile(null);
-              setError(cause instanceof Error ? cause.message : "Erro ao validar o usuário.");
-            })
-            .finally(() => {
-              if (active && currentGeneration === generation) setLoading(false);
-            });
+          if (!active || currentGeneration !== generation) return;
+          void restoreSession(currentGeneration).then(() => {
+            if (!active || currentGeneration !== generation) return;
+            void router.invalidate();
+            void queryClient.invalidateQueries();
+          });
         }, 0);
       });
       subscription = authChange.data.subscription;
-
-      const initialGeneration = generation;
-      void supabase.auth
-        .getUser()
-        .then(async ({ data, error: sessionError }) => {
-          if (sessionError && sessionError.name !== "AuthSessionMissingError") throw sessionError;
-          if (!active || generation !== initialGeneration) return;
-          const currentGeneration = ++generation;
-          if (data.user) {
-            const { data: sessionData } = await supabase.auth.getSession();
-            setSession(sessionData.session);
-            await loadProfile(data.user.id);
-          } else {
-            setProfile(null);
-            setError(null);
-          }
-          if (active && currentGeneration === generation) setLoading(false);
-        })
-        .catch((cause: unknown) => {
-          if (!active) return;
-          console.error("Não foi possível restaurar a sessão do usuário.", cause);
-          setError("Não foi possível verificar a sessão. Atualize a página e tente novamente.");
-          setLoading(false);
-        });
+      void restoreSession(++generation);
 
       const mostrarErroPersistencia = (event: Event) => {
         const mensagem = (event as CustomEvent<string>).detail;

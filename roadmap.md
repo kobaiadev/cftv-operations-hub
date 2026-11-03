@@ -1,4 +1,5 @@
 # Login repair
+- [ ] Corrigir a restauração de sessões expiradas e verificar acesso real sem alterar senhas ou níveis.
 - [x] Incluir as assinaturas compartilhadas da OS ao final do PDF de reparos; download real, teste com anexos e alinhamento visual verificados.
 - [x] Padronizar o PDF de reparos reutilizando o template de OS; download real, acentos e imagens enquadradas verificados.
 - [x] Verify the authentication context survives live preview updates without blanking login.
@@ -8,4 +9,4 @@
 - [x] Enable Cloud email/password sign-in and secure administrator-only account creation without new profile fields.
 - [x] Verify real Cloud invalid-login feedback, signed-out access, account authorization tests and automatic build.
 - [ ] Disable public signup in More → Users → Auth settings; hosted HIBP configuration could not be read safely, so the combined configuration tool was not used.
-- [ ] Create the first administrator via More → Users → Add user, then assign level 00 to that selected account. Cloud currently has no accounts; successful sign-in and administrator creation cannot be verified until this exists.
+- [x] Confirmar a existência de contas com senha, e-mail confirmado e administrador atribuído.

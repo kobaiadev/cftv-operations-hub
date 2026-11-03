@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import type { Json } from "@/integrations/supabase/types";
 
 export type ImagemReparo = { rotulo: string; detalhes: string; path: string; tipo: string };
 export type SolicitacaoReparo = {
@@ -72,7 +73,7 @@ export async function atualizarReparo(id: string, nova: NovaSolicitacao, existen
       else imagens[index] = img;
     }
     const { arquivos: _arquivos, solicitante: _solicitante, ...campos } = nova;
-    const { error } = await supabase.from("repair_requests").update({ ...campos, imagens }).eq("id", id).select("id").single();
+    const { error } = await supabase.from("repair_requests").update({ ...campos, imagens: imagens as unknown as Json }).eq("id", id).select("id").single();
     if (error) throw error;
     return id;
   } catch (error) {

@@ -125,7 +125,7 @@ function UsuariosPage() {
       if (editId) {
         const input = accountEditSchema.parse({ userId: editId, nome, email, nivel });
         await update({ data: input });
-        if (editId === profile.user_id) await refreshProfile();
+        if (editId === profile?.user_id) await refreshProfile();
       } else {
         const input = accountSchema.safeParse({ nome, email, senha, nivel });
         if (!input.success) throw new Error("Verifique nome, e-mail, senha e nível de acesso.");

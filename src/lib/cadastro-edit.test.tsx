@@ -9,10 +9,34 @@ import { useCadastro } from "./cadastro-store";
 
 describe("edição dos cadastros", () => {
   beforeEach(() => {
+    vi.clearAllMocks();
     mocks.save.mockResolvedValue(undefined);
     mocks.hydrate?.({ lojas: [], pessoas: [{ id: "p", nome: "Antes", funcao: "fiscal", matricula: "1", lojaId: "l", telefone: "", turno: "Manhã" }], empresas: [{ id: "e", nome: "Antes", cnpj: "12345678901234" }], supervisores: [{ id: "s", nome: "Antes", tipo: "NAGUMO", regiao: "Norte" }], perdas: [{ id: "v", lojaId: "l", mes: "01", ano: 2026, valor: 10 }, { id: "v2", lojaId: "l", mes: "02", ano: 2026, valor: 20 }] });
   });
   afterEach(cleanup);
+  it("aguarda confirmação da importação e disponibiliza os valores no mesmo store do Dashboard", async () => {
+    let confirmar: (() => void) | undefined;
+    mocks.save.mockImplementationOnce(() => new Promise<void>(resolve => { confirmar = resolve; }));
+    const { result } = renderHook(useCadastro);
+    let operacao: Promise<void> | undefined;
+    act(() => { operacao = result.current.importPerdas([{ lojaId: "l", ano: 2026, mes: "03", valor: 1234.56 }]); });
+    let concluida = false;
+    void operacao?.then(() => { concluida = true; });
+    expect(concluida).toBe(false);
+    expect(mocks.save.mock.calls[0]?.[0]).toBe("cadastro");
+    expect(mocks.save.mock.calls[0]?.[1].perdas.map((p: { valor: number }) => p.valor)).toEqual([1234.56, 10, 20]);
+    await act(async () => { confirmar?.(); await operacao; });
+    expect(concluida).toBe(true);
+    expect(result.current.perdas.reduce((sum, p) => sum + p.valor, 0)).toBe(1264.56);
+  });
+  it("mantém os dados anteriores e rejeita a importação quando o armazenamento falha", async () => {
+    mocks.save.mockRejectedValueOnce(new Error("Falha de conexão"));
+    const { result } = renderHook(useCadastro);
+    await act(async () => {
+      await expect(result.current.importPerdas([{ lojaId: "l", ano: 2026, mes: "03", valor: 1234.56 }])).rejects.toThrow("Falha de conexão");
+    });
+    expect(result.current.perdas.map(p => p.valor)).toEqual([10, 20]);
+  });
   it("atualiza pessoas, empresas e supervisores sem duplicar nem trocar IDs", () => {
     const { result } = renderHook(useCadastro);
     act(() => result.current.updatePessoa("p", { nome: "Depois", funcao: "seguranca", matricula: "2", lojaId: "l", telefone: "", turno: "Noite" }));

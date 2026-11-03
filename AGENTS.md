@@ -17,6 +17,7 @@
 - Preserve authentication context identity through Vite hot data during Fast Refresh so mounted providers and updated consumers cannot diverge.
 - Validate restored sessions with getUser before exposing them; clear invalid sessions locally and ignore cached INITIAL_SESSION events so expired credentials cannot bypass or block login.
 - Hydrate registered operational stores from Cloud after validating the user's access and before exposing private screens; this ensures saved data survives reloads.
+- Serialize Cloud writes per operational namespace; losses registration/import/edit must await durable save before clearing inputs or reporting success, and the Dashboard reads the same hydrated cadastro store.
 - Use the generated browser client and private Storage API with RLS for OS and supervision attachments; legacy Edge URLs and NEXT_PUBLIC configuration are not part of the active Cloud connection.
 - Repair requests live in `repair_requests` + private `repair-images` bucket; the page reuses OS form parts (src/components/os-form-parts.tsx) and the OS PDF template (baixarPdfReparo) — why: one shared look and OCR flow.
 - OS and repair exports share the rendering primitives, including signatures, in `os-pdf-template.ts`; report-specific generators only map their fields and block order — why: grids, typography, page breaks, signature spacing and attachment frames must not diverge.

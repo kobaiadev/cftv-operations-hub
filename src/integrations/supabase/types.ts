@@ -71,6 +71,81 @@ export type Database = {
         }
         Relationships: []
       }
+      quiz_game_sessions: {
+        Row: {
+          created_at: string
+          pontuacao: number
+          respostas: number
+          session_id: string
+          tema: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          pontuacao: number
+          respostas: number
+          session_id: string
+          tema: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          pontuacao?: number
+          respostas?: number
+          session_id?: string
+          tema?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      quiz_scores: {
+        Row: {
+          best_score: number
+          display_name: string
+          tema: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          best_score: number
+          display_name: string
+          tema: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          best_score?: number
+          display_name?: string
+          tema?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      quiz_user_progress: {
+        Row: {
+          display_name: string
+          nivel: number
+          total_respostas: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          display_name: string
+          nivel?: number
+          total_respostas?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          display_name?: string
+          nivel?: number
+          total_respostas?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       repair_requests: {
         Row: {
           created_at: string
@@ -166,10 +241,30 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      quiz_ranking: {
+        Row: {
+          best_score: number | null
+          display_name: string | null
+          nivel: number | null
+          tema: string | null
+          total_respostas: number | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       current_user_role: { Args: never; Returns: string }
+      registrar_pontuacao_quiz: {
+        Args: {
+          p_pontuacao: number
+          p_respostas: number
+          p_sessao: string
+          p_tema: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never

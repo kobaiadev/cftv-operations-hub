@@ -72,6 +72,32 @@ const feeds = {
   },
 } as const;
 
+export const NOTICIAS_POR_PAGINA = 6;
+export type PaginaNoticias = { noticias: Noticia[]; atualizadaEm: string; proximaPagina: number | null };
+const cacheNoticias = new Map<CategoriaNoticia, { dados: { noticias: Noticia[]; atualizadaEm: string }; expiraEm: number }>();
+const consultasEmAndamento = new Map<CategoriaNoticia, Promise<{ noticias: Noticia[]; atualizadaEm: string }>>();
+
+export async function buscarPaginaNoticias(categoria: CategoriaNoticia = "todas", pagina = 0): Promise<PaginaNoticias> {
+  const cache = cacheNoticias.get(categoria);
+  let dados = cache && cache.expiraEm > Date.now() ? cache.dados : undefined;
+  if (!dados) {
+    let consulta = consultasEmAndamento.get(categoria);
+    if (!consulta) {
+      consulta = buscarNoticias(categoria);
+      consultasEmAndamento.set(categoria, consulta);
+    }
+    try {
+      dados = await consulta;
+      cacheNoticias.set(categoria, { dados, expiraEm: Date.now() + 5 * 60_000 });
+    } finally {
+      consultasEmAndamento.delete(categoria);
+    }
+  }
+  const inicio = pagina * NOTICIAS_POR_PAGINA;
+  const fim = inicio + NOTICIAS_POR_PAGINA;
+  return { noticias: dados.noticias.slice(inicio, fim), atualizadaEm: dados.atualizadaEm, proximaPagina: fim < dados.noticias.length ? pagina + 1 : null };
+}
+
 export async function buscarNoticias(
   categoria: CategoriaNoticia = "todas",
 ): Promise<{ noticias: Noticia[]; atualizadaEm: string }> {

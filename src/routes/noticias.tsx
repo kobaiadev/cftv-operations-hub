@@ -5,17 +5,16 @@ import {
   ArrowUpRight,
   CalendarDays,
   Clock3,
+  ChevronDown,
   Newspaper,
   RefreshCw,
   Shield,
 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { carregarNoticias } from "@/lib/noticias.functions";
-import { categoriasNoticias, type CategoriaNoticia, type Noticia } from "@/lib/noticias";
-
-type DadosNoticias = { noticias: Noticia[]; atualizadaEm: string };
+import { categoriasNoticias, type CategoriaNoticia, type PaginaNoticias } from "@/lib/noticias";
 
 export const Route = createFileRoute("/noticias")({
   head: () => ({
@@ -56,26 +55,56 @@ function dataPorExtenso(data: string): string {
 function NoticiasPage() {
   const carregar = useServerFn(carregarNoticias);
   const [categoria, setCategoria] = useState<CategoriaNoticia>("todas");
-  const [dados, setDados] = useState<DadosNoticias | null>(null);
+  const [dados, setDados] = useState<PaginaNoticias | null>(null);
   const [carregando, setCarregando] = useState(true);
+  const [carregandoMais, setCarregandoMais] = useState(false);
+  const [erroMais, setErroMais] = useState<string | null>(null);
+  const requisicao = useRef(0);
   const [erro, setErro] = useState<string | null>(null);
 
   const atualizar = useCallback(async () => {
+    const id = ++requisicao.current;
     setCarregando(true);
+    setDados(null);
+    setCarregandoMais(false);
+    setErroMais(null);
     setErro(null);
     try {
-      setDados(await carregar({ data: categoria }));
+      const resultado = await carregar({ data: { categoria, pagina: 0 } });
+      if (id === requisicao.current) setDados(resultado);
     } catch (causa) {
+      if (id !== requisicao.current) return;
       console.error("Não foi possível carregar o painel de notícias.", causa);
       setErro(causa instanceof Error ? causa.message : "Não foi possível carregar as notícias.");
     } finally {
-      setCarregando(false);
+      if (id === requisicao.current) setCarregando(false);
     }
   }, [carregar, categoria]);
 
   useEffect(() => {
     void atualizar();
+    return () => { requisicao.current += 1; };
   }, [atualizar]);
+
+  const carregarMais = async () => {
+    if (!dados || dados.proximaPagina === null || carregando || carregandoMais) return;
+    const id = requisicao.current;
+    setCarregandoMais(true);
+    setErroMais(null);
+    try {
+      const resultado = await carregar({ data: { categoria, pagina: dados.proximaPagina } });
+      if (id !== requisicao.current) return;
+      setDados((atual) => {
+        if (!atual) return atual;
+        const existentes = new Set(atual.noticias.map((noticia) => noticia.url));
+        return { ...resultado, noticias: [...atual.noticias, ...resultado.noticias.filter((noticia) => !existentes.has(noticia.url))] };
+      });
+    } catch {
+      if (id === requisicao.current) setErroMais("Não foi possível carregar mais notícias. Tente novamente.");
+    } finally {
+      if (id === requisicao.current) setCarregandoMais(false);
+    }
+  };
 
   const noticias = dados?.noticias ?? [];
   const principal = noticias[0];
@@ -133,10 +162,11 @@ function NoticiasPage() {
           className="flex gap-2 overflow-x-auto p-3 sm:flex-wrap sm:px-6"
         >
           {categoriasNoticias.map((item) => (
-            <button
+            <Button
               key={item.id}
               type="button"
               aria-pressed={categoria === item.id}
+              variant="ghost"
               onClick={() => setCategoria(item.id)}
               className={`shrink-0 rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
                 categoria === item.id
@@ -145,7 +175,7 @@ function NoticiasPage() {
               }`}
             >
               {item.nome}
-            </button>
+            </Button>
           ))}
         </nav>
       </header>
@@ -307,6 +337,15 @@ function NoticiasPage() {
               </p>
             )}
           </section>
+          <div className="flex flex-col items-center gap-3 border-t border-border py-5" aria-live="polite">
+            {erroMais && <p role="alert" className="text-sm text-destructive">{erroMais}</p>}
+            {dados?.proximaPagina !== null && dados?.proximaPagina !== undefined ? (
+              <Button type="button" variant="outline" onClick={() => void carregarMais()} disabled={carregandoMais || carregando}>
+                {carregandoMais ? <RefreshCw className="animate-spin" /> : <ChevronDown />}
+                {carregandoMais ? "Carregando notícias..." : "Mais notícias"}
+              </Button>
+            ) : <p className="text-sm text-muted-foreground">Todas as notícias disponíveis foram exibidas.</p>}
+          </div>
         </>
       ) : (
         !erro && (

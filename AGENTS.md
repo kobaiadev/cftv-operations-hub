@@ -12,6 +12,7 @@
 - Keep email/password login at `/login`; public signup/recovery routes are absent because accounts are administered internally.
 - Login-specific semantic tokens in `src/styles.css` and the Button login variant isolate its branding from operational screens.
 - News requests return bounded pages from a short-lived server feed cache; load additional pages only on demand to limit transfers and repeated RSS requests.
+- Quiz scores, cumulative progression and idempotent game sessions use RLS-protected public tables and an authenticated score RPC; keep generated types synchronized through applied migrations to prevent schema drift.
 - Apply operational appearance through semantic CSS token overrides on the document; restore the browser preference after hydration and keep login branding isolated to avoid changing authentication visuals.
 - Prebundle React, React DOM and JSX runtimes together with UI dependencies in Vite to prevent mixed React instances during live dependency updates.
 - Account creation and revocation use authenticated server functions that verify the caller's stored access level before loading the privileged client; browser role writes and public signup are forbidden.

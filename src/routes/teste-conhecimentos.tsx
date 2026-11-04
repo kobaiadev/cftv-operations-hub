@@ -35,6 +35,10 @@ export const Route = createFileRoute("/teste-conhecimentos")({
   head: () => ({
     meta: [
       { title: "Teste seus conhecimentos — Segurança Patrimonial Nagumo" },
+      { property: "og:title", content: "Teste seus conhecimentos — Segurança Patrimonial Nagumo" },
+      { property: "og:description", content: "Quiz de segurança patrimonial, legislação penal, processo penal, LGPD e direitos fundamentais." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
       {
         name: "description",
         content:

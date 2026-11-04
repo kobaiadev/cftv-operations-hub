@@ -35,6 +35,10 @@ export const Route = createFileRoute("/teste-conhecimentos")({
   head: () => ({
     meta: [
       { title: "Teste seus conhecimentos — Segurança Patrimonial Nagumo" },
+      { property: "og:title", content: "Teste seus conhecimentos — Segurança Patrimonial Nagumo" },
+      { property: "og:description", content: "Quiz de segurança patrimonial, legislação penal, processo penal, LGPD e direitos fundamentais." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
       {
         name: "description",
         content:
@@ -240,7 +244,10 @@ function TesteConhecimentosPage() {
           setErroRanking("Não foi possível carregar o ranking. Tente novamente mais tarde.");
           setRanking([]);
         } else {
-          setRanking(data ?? []);
+          setRanking((data ?? []).flatMap((linha): PontuacaoRanking[] => {
+            if (linha.user_id === null || linha.display_name === null || linha.best_score === null || linha.total_respostas === null || linha.nivel === null) return [];
+            return [{ user_id: linha.user_id, display_name: linha.display_name, best_score: linha.best_score, total_respostas: linha.total_respostas, nivel: linha.nivel }];
+          }));
         }
         setCarregandoRanking(false);
       });

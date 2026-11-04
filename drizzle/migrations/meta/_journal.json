@@ -36,6 +36,13 @@
       "when": 1793667085569,
       "tag": "0004_allow_authorized_repair_edits",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1793835142658,
+      "tag": "0005_restore_quiz_persistence",
+      "breakpoints": true
     }
   ]
 }

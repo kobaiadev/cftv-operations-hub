@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { buscarNoticias } from "@/lib/noticias";
+import { buscarNoticias, buscarPaginaNoticias } from "@/lib/noticias";
 
 const feedXml = `<?xml version="1.0"?>
 <rss><channel>
@@ -22,6 +22,22 @@ afterEach(() => {
 });
 
 describe("feed de notícias", () => {
+  it("carrega pequenos grupos sob demanda, sem repetir notícias ou buscar o RSS novamente", async () => {
+    const xml = `<rss><channel>${Array.from({ length: 14 }, (_, i) => `<item><title>Notícia ${i}</title><link>https://noticias.example.com/artigo-${i}</link><pubDate>${new Date(Date.UTC(2026, 10, 4, 10, i)).toUTCString()}</pubDate></item>`).join("")}</channel></rss>`;
+    const fetchMock = vi.fn().mockResolvedValue(new Response(xml));
+    vi.stubGlobal("fetch", fetchMock);
+    const primeira = await buscarPaginaNoticias("tecnologia", 0);
+    expect(primeira.noticias).toHaveLength(6);
+    expect(primeira.proximaPagina).toBe(1);
+    const segunda = await buscarPaginaNoticias("tecnologia", 1);
+    expect(segunda.noticias).toHaveLength(6);
+    expect(segunda.proximaPagina).toBe(2);
+    expect(new Set([...primeira.noticias, ...segunda.noticias].map((n) => n.url)).size).toBe(12);
+    const ultima = await buscarPaginaNoticias("tecnologia", 2);
+    expect(ultima.noticias).toHaveLength(2);
+    expect(ultima.proximaPagina).toBeNull();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
   it("interpreta o RSS, remove marcação do resumo e mantém links seguros", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(feedXml)));
 

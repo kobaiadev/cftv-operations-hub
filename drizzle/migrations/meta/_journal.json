@@ -36,34 +36,6 @@
       "when": 1793667085569,
       "tag": "0004_allow_authorized_repair_edits",
       "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "7",
-      "when": 1793667180000,
-      "tag": "0005_quiz_leaderboard",
-      "breakpoints": true
-    },
-    {
-      "idx": 6,
-      "version": "7",
-      "when": 1793667240000,
-      "tag": "0006_quiz_progression",
-      "breakpoints": true
-    },
-    {
-      "idx": 7,
-      "version": "7",
-      "when": 1793750400000,
-      "tag": "0007_secure_quiz_answers",
-      "breakpoints": true
-    },
-    {
-      "idx": 8,
-      "version": "7",
-      "when": 1793836800000,
-      "tag": "0008_version_operational_state",
-      "breakpoints": true
     }
   ]
 }

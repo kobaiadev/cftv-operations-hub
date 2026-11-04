@@ -55,13 +55,8 @@ export const Route = createFileRoute("/reparos")({
 });
 
 type Slot = { file: File | null; url: string; detalhes: string };
-const slotsVazios = (): Slot[] =>
-  Array.from({ length: 3 }, () => ({ file: null, url: "", detalhes: "" }));
-const norm = (t: string) =>
-  t
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase();
+const slotsVazios = (): Slot[] => Array.from({ length: 3 }, () => ({ file: null, url: "", detalhes: "" }));
+const norm = (t: string) => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
 function ReparosPage() {
   const { lojas } = useCadastro();
@@ -103,10 +98,7 @@ function ReparosPage() {
         toast.info("Imagem com código de barras ignorada; digite o número manualmente.");
         return;
       }
-      const r = interpretarTexto(
-        texto,
-        lojas.map((l) => l.nome),
-      );
+      const r = interpretarTexto(texto, lojas.map((l) => l.nome));
       if (r.reservaNumero) {
         setGlpiNumero(r.reservaNumero);
         toast.success(`Número GLPI identificado: ${r.reservaNumero}`);
@@ -143,28 +135,14 @@ function ReparosPage() {
         arquivos: [
           ...(glpiFile ? [{ rotulo: "Solicitação GLPI", detalhes: "", file: glpiFile }] : []),
           ...slots.flatMap((s, i) =>
-            s.file
-              ? [{ rotulo: `Imagem adicional ${i + 1}`, detalhes: s.detalhes, file: s.file }]
-              : [],
+            s.file ? [{ rotulo: `Imagem adicional ${i + 1}`, detalhes: s.detalhes, file: s.file }] : [],
           ),
         ],
       };
-      return editando
-        ? atualizarReparo(
-            editando.id,
-            dados,
-            existentes.map((img) => ({
-              ...img,
-              detalhes:
-                slots.find((s, i) => img.rotulo === `Imagem adicional ${i + 1}`)?.detalhes ??
-                img.detalhes,
-            })),
-          )
-        : criarReparo(dados);
+      return editando ? atualizarReparo(editando.id, dados, existentes.map((img) => ({ ...img, detalhes: slots.find((s, i) => img.rotulo === `Imagem adicional ${i + 1}`)?.detalhes ?? img.detalhes }))) : criarReparo(dados);
     },
-    onSuccess: ({ id, avisos }) => {
+    onSuccess: (id) => {
       toast.success(`${id} registrada.`);
-      avisos.forEach((aviso) => toast.warning(aviso));
       limpar();
       void qc.invalidateQueries({ queryKey: reparosQueryKey });
     },
@@ -173,21 +151,15 @@ function ReparosPage() {
 
   const excluir = useMutation({
     mutationFn: excluirReparo,
-    onSuccess: (avisos) => {
-      void qc.invalidateQueries({ queryKey: reparosQueryKey });
-      avisos.forEach((aviso) => toast.warning(aviso));
-    },
-    onError: (error) =>
-      toast.error(`Não foi possível excluir: ${error instanceof Error ? error.message : error}`),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: reparosQueryKey }),
+    onError: () => toast.error("Não foi possível excluir."),
   });
 
   const visiveis = useMemo(() => {
     const q = norm(busca.trim());
     if (!q) return lista;
     return lista.filter((r) =>
-      norm(
-        `${r.id} ${r.loja} ${r.empresa_responsavel} ${r.glpi_numero} ${r.descricao} ${r.solicitante}`,
-      ).includes(q),
+      norm(`${r.id} ${r.loja} ${r.empresa_responsavel} ${r.glpi_numero} ${r.descricao} ${r.solicitante}`).includes(q),
     );
   }, [lista, busca]);
 
@@ -233,19 +205,10 @@ function ReparosPage() {
               <Input value={empresa} onChange={(e) => setEmpresa(e.target.value)} />
             </Field>
             <Field label="Gerente responsável pela loja">
-              <Input
-                value={gerente}
-                readOnly
-                placeholder="Selecione a loja"
-                className="bg-muted/40"
-              />
+              <Input value={gerente} readOnly placeholder="Selecione a loja" className="bg-muted/40" />
             </Field>
             <Field label="Solicitante">
-              <Input
-                value={editando?.solicitante ?? solicitante}
-                readOnly
-                className="bg-muted/40"
-              />
+              <Input value={editando?.solicitante ?? solicitante} readOnly className="bg-muted/40" />
             </Field>
           </div>
 
@@ -259,12 +222,7 @@ function ReparosPage() {
                 hidden
                 onChange={(e) => void lerGlpi(e.target.files?.[0])}
               />
-              <UploadBox
-                url={glpiUrl}
-                alt="Solicitação GLPI"
-                texto="Enviar print"
-                onClick={() => glpiInput.current?.click()}
-              />
+              <UploadBox url={glpiUrl} alt="Solicitação GLPI" texto="Enviar print" onClick={() => glpiInput.current?.click()} />
               <div className="relative">
                 <Input
                   value={glpiNumero}
@@ -292,25 +250,14 @@ function ReparosPage() {
                   onChange={(e) => {
                     const f = e.target.files?.[0];
                     if (!f) return;
-                    setSlots((p) =>
-                      p.map((x, j) =>
-                        j === i ? { ...x, file: f, url: URL.createObjectURL(f) } : x,
-                      ),
-                    );
+                    setSlots((p) => p.map((x, j) => (j === i ? { ...x, file: f, url: URL.createObjectURL(f) } : x)));
                   }}
                 />
-                <UploadBox
-                  url={s.url}
-                  alt={`Imagem adicional ${i + 1}`}
-                  texto="Enviar imagem"
-                  onClick={() => extraInputs.current[i]?.click()}
-                />
+                <UploadBox url={s.url} alt={`Imagem adicional ${i + 1}`} texto="Enviar imagem" onClick={() => extraInputs.current[i]?.click()} />
                 <Input
                   value={s.detalhes}
                   onChange={(e) =>
-                    setSlots((p) =>
-                      p.map((x, j) => (j === i ? { ...x, detalhes: e.target.value } : x)),
-                    )
+                    setSlots((p) => p.map((x, j) => (j === i ? { ...x, detalhes: e.target.value } : x)))
                   }
                   placeholder="Detalhes da imagem"
                 />
@@ -330,8 +277,7 @@ function ReparosPage() {
               disabled={!loja || !descricao.trim() || salvar.isPending || lendoGlpi}
               onClick={() => salvar.mutate()}
             >
-              {salvar.isPending ? <Loader2 className="animate-spin" /> : <Save />}{" "}
-              {editando ? "Salvar alterações" : "Registrar solicitação"}
+              {salvar.isPending ? <Loader2 className="animate-spin" /> : <Save />} {editando ? "Salvar alterações" : "Registrar solicitação"}
             </Button>
           </div>
         </section>
@@ -340,11 +286,7 @@ function ReparosPage() {
       <section className="rounded-xl border border-border bg-card">
         <div className="flex items-center gap-2 border-b border-border p-4">
           <Search className="size-4 text-muted-foreground" />
-          <Input
-            value={busca}
-            onChange={(e) => setBusca(e.target.value)}
-            placeholder="Pesquisar por loja, empresa, GLPI ou palavra"
-          />
+          <Input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Pesquisar por loja, empresa, GLPI ou palavra" />
         </div>
         <Table>
           <TableHeader>
@@ -370,74 +312,24 @@ function ReparosPage() {
               <TableRow key={r.id}>
                 <TableCell className="pl-5 font-mono text-primary">{r.id}</TableCell>
                 <TableCell className="whitespace-nowrap font-mono text-xs text-muted-foreground">
-                  {new Date(r.created_at).toLocaleString("pt-BR", {
-                    dateStyle: "short",
-                    timeStyle: "short",
-                  })}
+                  {new Date(r.created_at).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}
                 </TableCell>
                 <TableCell className="whitespace-nowrap">{r.loja}</TableCell>
-                <TableCell className="hidden text-muted-foreground md:table-cell">
-                  {r.empresa_responsavel || "—"}
-                </TableCell>
+                <TableCell className="hidden text-muted-foreground md:table-cell">{r.empresa_responsavel || "—"}</TableCell>
                 <TableCell className="font-mono text-xs">{r.glpi_numero || "—"}</TableCell>
-                <TableCell className="hidden text-muted-foreground lg:table-cell">
-                  {r.solicitante}
-                </TableCell>
+                <TableCell className="hidden text-muted-foreground lg:table-cell">{r.solicitante}</TableCell>
                 <TableCell className="pr-5 text-right">
                   <div className="flex justify-end gap-1">
-                    {editar && (
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        title="Editar"
-                        aria-label={`Editar ${r.id}`}
-                        disabled={salvar.isPending}
-                        onClick={() => {
-                          if (!editar) return;
-                          limpar();
-                          setEditando(r);
-                          setExistentes(r.imagens);
-                          setLoja(r.loja);
-                          setEmpresa(r.empresa_responsavel);
-                          setDescricao(r.descricao);
-                          setGlpiNumero(r.glpi_numero);
-                          setSlots(
-                            slotsVazios().map((s, i) => ({
-                              ...s,
-                              detalhes:
-                                r.imagens.find((img) => img.rotulo === `Imagem adicional ${i + 1}`)
-                                  ?.detalhes ?? "",
-                            })),
-                          );
-                          void carregarImagensReparo(r.imagens)
-                            .then((imagens) => {
-                              setGlpiUrl(
-                                imagens.find((img) => img.rotulo === "Solicitação GLPI")?.dataUrl ??
-                                  "",
-                              );
-                              setSlots((slots) =>
-                                slots.map((s, i) => ({
-                                  ...s,
-                                  url:
-                                    imagens.find(
-                                      (img) => img.rotulo === `Imagem adicional ${i + 1}`,
-                                    )?.dataUrl ?? "",
-                                })),
-                              );
-                            })
-                            .catch((error: unknown) => {
-                              toast.error(
-                                error instanceof Error
-                                  ? error.message
-                                  : "Não foi possível carregar os anexos.",
-                              );
-                            });
-                          window.scrollTo({ top: 0, behavior: "smooth" });
-                        }}
-                      >
-                        <Pencil className="text-primary" />
-                      </Button>
-                    )}
+                    {editar && <Button size="icon" variant="ghost" title="Editar" aria-label={`Editar ${r.id}`} disabled={salvar.isPending} onClick={() => {
+                      if (!editar) return;
+                      limpar(); setEditando(r); setExistentes(r.imagens); setLoja(r.loja); setEmpresa(r.empresa_responsavel); setDescricao(r.descricao); setGlpiNumero(r.glpi_numero);
+                      setSlots(slotsVazios().map((s, i) => ({ ...s, detalhes: r.imagens.find((img) => img.rotulo === `Imagem adicional ${i + 1}`)?.detalhes ?? "" })));
+                      void carregarImagensReparo(r.imagens).then((imagens) => {
+                        setGlpiUrl(imagens.find((img) => img.rotulo === "Solicitação GLPI")?.dataUrl ?? "");
+                        setSlots((slots) => slots.map((s, i) => ({ ...s, url: imagens.find((img) => img.rotulo === `Imagem adicional ${i + 1}`)?.dataUrl ?? "" })));
+                      });
+                      window.scrollTo({ top: 0, behavior: "smooth" });
+                    }}><Pencil className="text-primary" /></Button>}
                     {podeBaixar(profile?.role) && (
                       <Button size="sm" variant="outline" onClick={() => void baixar(r.id)}>
                         <Download /> PDF

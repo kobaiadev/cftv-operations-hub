@@ -24,12 +24,12 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   dificuldadesQuiz,
   embaralhar,
+  obterPerguntasDoTema,
   temasQuiz,
   type DificuldadeQuiz,
   obterProgressoQuiz,
   type PerguntaQuiz,
 } from "@/lib/quiz-seguranca";
-import { iniciarQuizSeguro, responderQuizSeguro } from "@/lib/quiz.functions";
 
 export const Route = createFileRoute("/teste-conhecimentos")({
   head: () => ({
@@ -62,18 +62,15 @@ type PontuacaoRanking = {
   nivel: number;
 };
 
-type PerguntaPublica = Omit<PerguntaQuiz, "correta">;
-
 function TesteConhecimentosPage() {
   const [temaSelecionado, setTemaSelecionado] = useState<string | null>(null);
   const [dificuldadeSelecionada, setDificuldadeSelecionada] = useState<DificuldadeQuiz | null>(
     null,
   );
-  const [pergunta, setPergunta] = useState<PerguntaPublica | null>(null);
+  const [pergunta, setPergunta] = useState<PerguntaQuiz | null>(null);
   const [opcoes, setOpcoes] = useState<string[]>([]);
   const [respostaEscolhida, setRespostaEscolhida] = useState<number | null>(null);
   const [acertou, setAcertou] = useState<boolean | null>(null);
-  const [respostaCorreta, setRespostaCorreta] = useState<string | null>(null);
   const [pontos, setPontos] = useState(0);
   const [vidas, setVidas] = useState(3);
   const [respondidas, setRespondidas] = useState(0);
@@ -88,61 +85,57 @@ function TesteConhecimentosPage() {
   } | null>(null);
   const [carregandoProgresso, setCarregandoProgresso] = useState(true);
   const [erroProgresso, setErroProgresso] = useState<string | null>(null);
+  const filaRef = useRef<PerguntaQuiz[]>([]);
+  const ultimaPerguntaRef = useRef<string | null>(null);
   const sessaoRef = useRef<string | null>(null);
   const respostaPendenteRef = useRef<{
     tema: string;
     sessao: string;
-    respostaNumero: number;
-    perguntaId: string;
-    opcaoEscolhida: string;
+    respostas: number;
+    pontuacao: number;
   } | null>(null);
-  const proximaPerguntaRef = useRef<PerguntaPublica | null>(null);
   const respostasAcumuladasInicioRef = useRef(0);
   const [salvandoResposta, setSalvandoResposta] = useState(false);
-  const [iniciandoQuiz, setIniciandoQuiz] = useState(false);
   const [erroSalvarResposta, setErroSalvarResposta] = useState<string | null>(null);
   const [respostasDaPartidaPersistidas, setRespostasDaPartidaPersistidas] = useState(0);
 
-  const carregarProximaPergunta = () => {
-    const proxima = proximaPerguntaRef.current;
-    if (!proxima) {
-      throw new Error("Não foi possível carregar a próxima pergunta.");
+  const carregarPergunta = useCallback((tema: string, dificuldade: DificuldadeQuiz) => {
+    if (filaRef.current.length === 0) {
+      filaRef.current = embaralhar(obterPerguntasDoTema(tema, dificuldade));
+      if (filaRef.current.length > 1 && filaRef.current[0]?.id === ultimaPerguntaRef.current) {
+        const primeira = filaRef.current.shift();
+        if (primeira) filaRef.current.push(primeira);
+      }
     }
+
+    const proxima = filaRef.current.shift();
+    if (!proxima) {
+      throw new Error(
+        `Não há perguntas cadastradas para o tema "${tema}" no nível "${dificuldade}".`,
+      );
+    }
+    ultimaPerguntaRef.current = proxima.id;
     setPergunta(proxima);
     setOpcoes(embaralhar(proxima.opcoes));
     setRespostaEscolhida(null);
     setAcertou(null);
-    setRespostaCorreta(null);
-  };
+  }, []);
 
-  const iniciarQuiz = async (tema: string, dificuldade: DificuldadeQuiz) => {
-    if (iniciandoQuiz) return;
-    setIniciandoQuiz(true);
-    try {
-      const partida = await iniciarQuizSeguro({ data: { tema, dificuldade } });
-      setTemaSelecionado(tema);
-      setDificuldadeSelecionada(dificuldade);
-      setTemaRanking(tema);
-      setPontos(0);
-      setVidas(3);
-      setRespondidas(0);
-      setRespostaEscolhida(null);
-      setAcertou(null);
-      setRespostaCorreta(null);
-      respostaPendenteRef.current = null;
-      proximaPerguntaRef.current = null;
-      setErroSalvarResposta(null);
-      setRespostasDaPartidaPersistidas(0);
-      respostasAcumuladasInicioRef.current = progressoUsuario?.total_respostas ?? 0;
-      sessaoRef.current = partida.sessionId;
-      setPergunta(partida.pergunta);
-      setOpcoes(embaralhar(partida.pergunta.opcoes));
-    } catch (error) {
-      console.error("Não foi possível iniciar o quiz.", error);
-      toast.error(error instanceof Error ? error.message : "Não foi possível iniciar o quiz.");
-    } finally {
-      setIniciandoQuiz(false);
-    }
+  const iniciarQuiz = (tema: string, dificuldade: DificuldadeQuiz) => {
+    setTemaSelecionado(tema);
+    setDificuldadeSelecionada(dificuldade);
+    setTemaRanking(tema);
+    setPontos(0);
+    setVidas(3);
+    setRespondidas(0);
+    respostaPendenteRef.current = null;
+    setErroSalvarResposta(null);
+    setRespostasDaPartidaPersistidas(0);
+    respostasAcumuladasInicioRef.current = progressoUsuario?.total_respostas ?? 0;
+    sessaoRef.current = crypto.randomUUID();
+    filaRef.current = embaralhar(obterPerguntasDoTema(tema, dificuldade));
+    ultimaPerguntaRef.current = null;
+    carregarPergunta(tema, dificuldade);
   };
 
   const salvarRespostaPendente = useCallback(async () => {
@@ -152,34 +145,25 @@ function TesteConhecimentosPage() {
     setSalvandoResposta(true);
     setErroSalvarResposta(null);
     try {
-      const resultado = await responderQuizSeguro({
-        data: {
-          sessionId: respostaPendente.sessao,
-          tema: respostaPendente.tema,
-          respostaNumero: respostaPendente.respostaNumero,
-          perguntaId: respostaPendente.perguntaId,
-          opcaoEscolhida: respostaPendente.opcaoEscolhida,
-        },
+      const { error } = await supabase.rpc("registrar_pontuacao_quiz", {
+        p_tema: respostaPendente.tema,
+        p_pontuacao: respostaPendente.pontuacao,
+        p_respostas: respostaPendente.respostas,
+        p_sessao: respostaPendente.sessao,
       });
+
+      if (error) {
+        setErroSalvarResposta("Sua resposta ainda não foi salva. Tente novamente.");
+        toast.error("Não foi possível salvar seu progresso.");
+        return;
+      }
+
       respostaPendenteRef.current = null;
-      setAcertou(resultado.correta);
-      setRespostaCorreta(resultado.opcaoCorreta);
-      setPontos(resultado.pontuacao);
-      setRespondidas(resultado.respostas);
-      setVidas(resultado.vidas);
-      proximaPerguntaRef.current = resultado.proximaPergunta;
-      setProgressoUsuario({
-        total_respostas: resultado.progressoTotal,
-        nivel: resultado.nivel,
-      });
-      setRespostasDaPartidaPersistidas(resultado.respostas);
+      setRespostasDaPartidaPersistidas((total) => total + 1);
       setVersaoRanking((versao) => versao + 1);
-    } catch (error) {
-      console.error("Não foi possível salvar a resposta do quiz.", error);
+    } catch {
       setErroSalvarResposta("Sua resposta ainda não foi salva. Tente novamente.");
-      toast.error(
-        error instanceof Error ? error.message : "Não foi possível salvar seu progresso.",
-      );
+      toast.error("Não foi possível salvar seu progresso.");
     } finally {
       setSalvandoResposta(false);
     }
@@ -187,22 +171,22 @@ function TesteConhecimentosPage() {
 
   const responder = (indice: number) => {
     if (!pergunta || respostaEscolhida !== null || vidas === 0 || salvandoResposta) return;
-    const opcaoEscolhida = opcoes[indice];
-    if (!opcaoEscolhida) return;
+    const correta = opcoes[indice] === pergunta.opcoes[pergunta.correta];
     const proximaResposta = respondidas + 1;
+    const proximaPontuacao = pontos + (correta ? 10 : 0);
     const sessao = sessaoRef.current;
     if (!sessao || !temaSelecionado) return;
 
     setRespostaEscolhida(indice);
-    setAcertou(null);
-    setRespostaCorreta(null);
-    setErroSalvarResposta(null);
+    setAcertou(correta);
+    setRespondidas(proximaResposta);
+    setPontos(proximaPontuacao);
+    if (!correta) setVidas((total) => Math.max(0, total - 1));
     respostaPendenteRef.current = {
       tema: temaSelecionado,
       sessao,
-      respostaNumero: proximaResposta,
-      perguntaId: pergunta.id,
-      opcaoEscolhida,
+      respostas: proximaResposta,
+      pontuacao: proximaPontuacao,
     };
     void salvarRespostaPendente();
   };
@@ -213,8 +197,8 @@ function TesteConhecimentosPage() {
     setPergunta(null);
     setRespostaEscolhida(null);
     setAcertou(null);
-    setRespostaCorreta(null);
-    proximaPerguntaRef.current = null;
+    filaRef.current = [];
+    ultimaPerguntaRef.current = null;
     respostaPendenteRef.current = null;
     sessaoRef.current = null;
   };
@@ -234,7 +218,9 @@ function TesteConhecimentosPage() {
         )
       : (progressoUsuario?.total_respostas ?? 0),
   );
-  const indiceCorreto = respostaCorreta ? opcoes.indexOf(respostaCorreta) : -1;
+  const indiceCorreto = pergunta
+    ? opcoes.findIndex((opcao) => opcao === pergunta.opcoes[pergunta.correta])
+    : -1;
 
   useEffect(() => {
     let ativo = true;
@@ -399,8 +385,7 @@ function TesteConhecimentosPage() {
               <button
                 key={dificuldade.id}
                 type="button"
-                onClick={() => void iniciarQuiz(temaSelecionado, dificuldade.id)}
-                disabled={iniciandoQuiz}
+                onClick={() => iniciarQuiz(temaSelecionado, dificuldade.id)}
                 className="group flex min-h-36 flex-col items-start rounded-xl border border-border bg-card p-5 text-left shadow-card transition-colors hover:border-primary/40 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               >
                 <span className="flex size-10 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary">
@@ -410,7 +395,7 @@ function TesteConhecimentosPage() {
                   {dificuldade.titulo}
                 </span>
                 <span className="mt-1 text-sm leading-5 text-muted-foreground">
-                  {iniciandoQuiz ? "Preparando partida..." : dificuldade.descricao}
+                  {dificuldade.descricao}
                 </span>
               </button>
             ))}
@@ -554,7 +539,7 @@ function TesteConhecimentosPage() {
                   })}
                 </div>
 
-                {respostaEscolhida !== null && acertou !== null && (
+                {respostaEscolhida !== null && (
                   <div
                     aria-live="polite"
                     className={`mt-5 rounded-xl border p-4 ${
@@ -603,7 +588,10 @@ function TesteConhecimentosPage() {
                         Salvando resposta...
                       </p>
                     ) : (
-                      <Button type="button" onClick={carregarProximaPergunta}>
+                      <Button
+                        type="button"
+                        onClick={() => carregarPergunta(temaSelecionado, dificuldadeSelecionada)}
+                      >
                         Próxima pergunta
                       </Button>
                     )}

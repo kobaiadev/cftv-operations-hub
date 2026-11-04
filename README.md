@@ -54,17 +54,20 @@ O nível 03 pode visualizar o conteúdo exibido na tela; como em qualquer aplica
 
 ### Implantação do backend
 
-1. Configure `VITE_SUPABASE_URL` e `VITE_SUPABASE_PUBLISHABLE_KEY` para o cliente do navegador. No runtime do servidor, configure também `SUPABASE_URL` e `SUPABASE_PUBLISHABLE_KEY`. A chave privilegiada `SUPABASE_SERVICE_ROLE_KEY` é exclusiva do servidor e do provisionamento inicial; nunca a inclua no bundle do navegador.
-2. Faça backup e confira o projeto vinculado e o histórico remoto antes de aplicar as migrations. Com a CLI do Supabase autenticada e vinculada ao projeto, aplique a cadeia oficial:
+1. Configure `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` no ambiente da aplicação.
+2. Com a CLI do Supabase autenticada e vinculada ao projeto, aplique a migration:
 
    ```sh
-   supabase migration list
    supabase db push
    ```
 
-   A pasta `supabase/migrations` é a fonte de migrations para esse fluxo. `drizzle/migrations` mantém a cadeia equivalente para ambientes que usam Drizzle; não execute as duas cadeias no mesmo projeto.
-3. As operações administrativas e do quiz usam funções server-side do TanStack Start, que validam a sessão e o nível de acesso antes de carregar o cliente privilegiado. Publique a aplicação com seu runtime de servidor configurado; não é necessário publicar Edge Functions `manage-users` ou `view-attachment`.
-4. O quiz calcula e registra respostas no servidor; as versões de estado operacional também são verificadas em cada gravação para impedir que uma sessão sobrescreva alterações mais recentes. As imagens de reparos são removidas após substituição ou exclusão, e falhas de limpeza são informadas na interface.
+3. As ações administrativas são executadas pela Edge Function `manage-users`; a chave de serviço nunca é necessária nem deve ser configurada no ambiente do frontend. As funções validam a sessão e a permissão no backend e aceitam chamadas CORS autenticadas sem exigir o segredo `APP_ORIGIN`. O Supabase fornece a chave de serviço ao runtime da Edge Function.
+4. Publique as funções administrativas e de leitura de anexos após alterações:
+
+   ```sh
+   supabase functions deploy manage-users --project-ref vufvljuxgnoohqcjgopu
+   supabase functions deploy view-attachment --project-ref vufvljuxgnoohqcjgopu
+   ```
 
 5. Execute o provisionamento inicial em um ambiente seguro com Bun, usando a URL e a chave de serviço do projeto e senhas fortes fornecidas somente por variáveis de ambiente:
 

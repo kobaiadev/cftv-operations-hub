@@ -50,21 +50,18 @@ export type Database = {
           namespace: string;
           updated_at: string;
           updated_by: string;
-          version: number;
         };
         Insert: {
           data?: Json;
           namespace: string;
           updated_at?: string;
           updated_by?: string;
-          version?: number;
         };
         Update: {
           data?: Json;
           namespace?: string;
           updated_at?: string;
           updated_by?: string;
-          version?: number;
         };
         Relationships: [];
       };
@@ -89,93 +86,6 @@ export type Database = {
           tema?: string;
           updated_at?: string;
           user_id?: string;
-        };
-        Relationships: [];
-      };
-      quiz_game_answers: {
-        Row: {
-          correta: boolean;
-          created_at: string;
-          opcao_correta: string;
-          opcao_escolhida: string;
-          pergunta_id: string;
-          pontuacao: number;
-          proxima_pergunta_id: string | null;
-          resposta_numero: number;
-          session_id: string;
-          total_respostas: number;
-          user_id: string;
-          vidas: number;
-        };
-        Insert: {
-          correta: boolean;
-          created_at?: string;
-          opcao_correta: string;
-          opcao_escolhida: string;
-          pergunta_id: string;
-          pontuacao: number;
-          proxima_pergunta_id?: string | null;
-          resposta_numero: number;
-          session_id: string;
-          total_respostas: number;
-          user_id: string;
-          vidas: number;
-        };
-        Update: {
-          correta?: boolean;
-          created_at?: string;
-          opcao_correta?: string;
-          opcao_escolhida?: string;
-          pergunta_id?: string;
-          pontuacao?: number;
-          proxima_pergunta_id?: string | null;
-          resposta_numero?: number;
-          session_id?: string;
-          total_respostas?: number;
-          user_id?: string;
-          vidas?: number;
-        };
-        Relationships: [];
-      };
-      quiz_game_sessions: {
-        Row: {
-          concluida: boolean;
-          created_at: string;
-          dificuldade: string;
-          pergunta_atual: string | null;
-          perguntas_vistas: string[];
-          pontuacao: number;
-          respostas: number;
-          session_id: string;
-          tema: string;
-          user_id: string;
-          vidas: number;
-        };
-        Insert: {
-          concluida?: boolean;
-          created_at?: string;
-          dificuldade?: string;
-          pergunta_atual?: string | null;
-          perguntas_vistas?: string[];
-          pontuacao?: number;
-          respostas?: number;
-          session_id: string;
-          tema: string;
-          user_id: string;
-          vidas?: number;
-        };
-        Update: {
-          concluida?: boolean;
-          created_at?: string;
-          dificuldade?: string;
-          pergunta_atual?: string | null;
-          perguntas_vistas?: string[];
-          pontuacao?: number;
-          respostas?: number;
-          session_id?: string;
-          tema?: string;
-          user_id?: string;
-          vidas?: number;
         };
         Relationships: [];
       };
@@ -313,29 +223,9 @@ export type Database = {
     };
     Functions: {
       current_user_role: { Args: never; Returns: string };
-      registrar_resposta_quiz: {
-        Args: {
-          p_correta: boolean;
-          p_opcao_correta: string;
-          p_opcao_escolhida: string;
-          p_pergunta_id: string;
-          p_perguntas_vistas: string[];
-          p_proxima_pergunta_id: string | null;
-          p_resposta_numero: number;
-          p_session_id: string;
-          p_tema: string;
-          p_user_id: string;
-        };
-        Returns: {
-          correta: boolean;
-          nivel: number;
-          opcao_correta: string;
-          pontuacao: number;
-          progresso_total: number;
-          proxima_pergunta_id: string | null;
-          total_respostas: number;
-          vidas: number;
-        }[];
+      registrar_pontuacao_quiz: {
+        Args: { p_pontuacao: number; p_respostas: number; p_sessao: string; p_tema: string };
+        Returns: undefined;
       };
     };
     Enums: {

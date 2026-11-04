@@ -1,6 +1,6 @@
 # Login repair
 - [x] Limitar notícias a seis por solicitação e incluir “Mais notícias” ao final; acesso real confirmou seis iniciais, doze após clicar, nenhuma duplicata e reinício ao trocar categoria; três testes passaram.
-- [ ] Corrigir erro anterior de publicação no Teste de conhecimentos: tabelas e função do quiz não estão no banco atual; restauração exige revisar migrações antigas com referências proibidas ao cadastro de autenticação, fora do ajuste de notícias.
+- [x] Corrigir erro anterior de publicação no Teste de conhecimentos: armazenamento restaurado com permissões protegidas, tipos atualizados e valores nulos tratados; ranking e progresso carregaram com sessão real, 23 testes passaram e publicação compila sem erros. Nenhuma pontuação de teste criada.
 - [x] Consultar a paleta oficial Nagumo e incluir alternância claro/escuro no topo; aparência clara com branco, vermelho, marinho e turquesa, escura preservada, escolha mantida após recarregar e página Notícias verificada com acesso real, sem erros.
 - [x] Corrigir confirmação de armazenamento das perdas manuais/importadas, ordenar gravações e verificar importação XLSX até o Dashboard após recarregar; total de teste R$ 1.234,56 confirmado, registro temporário removido e 18 testes passaram. Nenhuma perda anterior estava salva; planilha original não disponível nesta sessão.
 - [x] Cadastrar as nove lojas fornecidas com gerentes, endereços, cidades e estados, sem duplicar registros existentes; preservado endereço completo da loja 36 e nove lojas verificadas na tela.

@@ -1,11 +1,17 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { accountSchema, accountEditSchema, requireSafeAccountEdit, requireAdministrator, requireOtherAccount } from "@/lib/account-rules";
+import {
+  accountSchema,
+  accountEditSchema,
+  requireSafeAccountEdit,
+  requireAdministrator,
+  requireOtherAccount,
+} from "@/lib/account-rules";
 
 export const createAccount = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => accountSchema.parse(input))
+  .validator((input: unknown) => accountSchema.parse(input))
   .handler(async ({ data, context }) => {
     const { data: access, error: accessError } = await context.supabase
       .from("user_roles")
@@ -43,7 +49,7 @@ export const createAccount = createServerFn({ method: "POST" })
 
 export const revokeAccountAccess = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ userId: z.string().uuid() }).parse(input))
+  .validator((input: unknown) => z.object({ userId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
     const { data: access, error } = await context.supabase
       .from("user_roles")
@@ -64,22 +70,38 @@ export const revokeAccountAccess = createServerFn({ method: "POST" })
 
 export const updateAccount = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => accountEditSchema.parse(input))
+  .validator((input: unknown) => accountEditSchema.parse(input))
   .handler(async ({ data, context }) => {
-    const { data: access, error } = await context.supabase.from("user_roles").select("role").eq("user_id", context.userId).maybeSingle();
+    const { data: access, error } = await context.supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", context.userId)
+      .maybeSingle();
     if (error) throw new Error("Não foi possível verificar seu acesso.");
     requireAdministrator(access?.role);
     requireSafeAccountEdit(context.userId, data.userId, data.nivel);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: old, error: readError } = await supabaseAdmin.from("user_roles").select("email").eq("user_id", data.userId).single();
+    const { data: old, error: readError } = await supabaseAdmin
+      .from("user_roles")
+      .select("email")
+      .eq("user_id", data.userId)
+      .single();
     if (readError || !old) throw new Error("Usuário não encontrado.");
     if (old.email !== data.email) {
-      const { error: emailError } = await supabaseAdmin.auth.admin.updateUserById(data.userId, { email: data.email });
+      const { error: emailError } = await supabaseAdmin.auth.admin.updateUserById(data.userId, {
+        email: data.email,
+      });
       if (emailError) throw new Error("Não foi possível atualizar o e-mail da conta.");
     }
-    const { error: updateError } = await supabaseAdmin.from("user_roles").update({ display_name: data.nome, email: data.email, role: data.nivel }).eq("user_id", data.userId).select("user_id").single();
+    const { error: updateError } = await supabaseAdmin
+      .from("user_roles")
+      .update({ display_name: data.nome, email: data.email, role: data.nivel })
+      .eq("user_id", data.userId)
+      .select("user_id")
+      .single();
     if (updateError) {
-      if (old.email !== data.email) await supabaseAdmin.auth.admin.updateUserById(data.userId, { email: old.email });
+      if (old.email !== data.email)
+        await supabaseAdmin.auth.admin.updateUserById(data.userId, { email: old.email });
       throw new Error("Não foi possível atualizar o cadastro do usuário.");
     }
     return { success: true };

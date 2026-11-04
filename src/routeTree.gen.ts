@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AnalisePerdasRouteImport } from './routes/analise-perdas'
 import { Route as CadastroRouteImport } from './routes/cadastro'
 import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
+import { Route as CursosRouteImport } from './routes/cursos'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as NoticiasRouteImport } from './routes/noticias'
 import { Route as OrdensRouteImport } from './routes/ordens'
@@ -41,6 +42,11 @@ const CadastroRoute = CadastroRouteImport.update({
 const ConfiguracoesRoute = ConfiguracoesRouteImport.update({
   id: '/configuracoes',
   path: '/configuracoes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CursosRoute = CursosRouteImport.update({
+  id: '/cursos',
+  path: '/cursos',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -94,6 +100,7 @@ export interface FileRoutesByFullPath {
   '/analise-perdas': typeof AnalisePerdasRoute
   '/cadastro': typeof CadastroRoute
   '/configuracoes': typeof ConfiguracoesRoute
+  '/cursos': typeof CursosRoute
   '/login': typeof LoginRoute
   '/noticias': typeof NoticiasRoute
   '/ordens': typeof OrdensRoute
@@ -109,6 +116,7 @@ export interface FileRoutesByTo {
   '/analise-perdas': typeof AnalisePerdasRoute
   '/cadastro': typeof CadastroRoute
   '/configuracoes': typeof ConfiguracoesRoute
+  '/cursos': typeof CursosRoute
   '/login': typeof LoginRoute
   '/noticias': typeof NoticiasRoute
   '/ordens': typeof OrdensRoute
@@ -125,6 +133,7 @@ export interface FileRoutesById {
   '/analise-perdas': typeof AnalisePerdasRoute
   '/cadastro': typeof CadastroRoute
   '/configuracoes': typeof ConfiguracoesRoute
+  '/cursos': typeof CursosRoute
   '/login': typeof LoginRoute
   '/noticias': typeof NoticiasRoute
   '/ordens': typeof OrdensRoute
@@ -142,6 +151,7 @@ export interface FileRouteTypes {
     | '/analise-perdas'
     | '/cadastro'
     | '/configuracoes'
+    | '/cursos'
     | '/login'
     | '/noticias'
     | '/ordens'
@@ -157,6 +167,7 @@ export interface FileRouteTypes {
     | '/analise-perdas'
     | '/cadastro'
     | '/configuracoes'
+    | '/cursos'
     | '/login'
     | '/noticias'
     | '/ordens'
@@ -172,6 +183,7 @@ export interface FileRouteTypes {
     | '/analise-perdas'
     | '/cadastro'
     | '/configuracoes'
+    | '/cursos'
     | '/login'
     | '/noticias'
     | '/ordens'
@@ -188,6 +200,7 @@ export interface RootRouteChildren {
   AnalisePerdasRoute: typeof AnalisePerdasRoute
   CadastroRoute: typeof CadastroRoute
   ConfiguracoesRoute: typeof ConfiguracoesRoute
+  CursosRoute: typeof CursosRoute
   LoginRoute: typeof LoginRoute
   NoticiasRoute: typeof NoticiasRoute
   OrdensRoute: typeof OrdensRoute
@@ -227,6 +240,13 @@ declare module '@tanstack/react-router' {
       path: '/configuracoes'
       fullPath: '/configuracoes'
       preLoaderRoute: typeof ConfiguracoesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cursos': {
+      id: '/cursos'
+      path: '/cursos'
+      fullPath: '/cursos'
+      preLoaderRoute: typeof CursosRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -300,6 +320,7 @@ const rootRouteChildren: RootRouteChildren = {
   AnalisePerdasRoute: AnalisePerdasRoute,
   CadastroRoute: CadastroRoute,
   ConfiguracoesRoute: ConfiguracoesRoute,
+  CursosRoute: CursosRoute,
   LoginRoute: LoginRoute,
   NoticiasRoute: NoticiasRoute,
   OrdensRoute: OrdensRoute,

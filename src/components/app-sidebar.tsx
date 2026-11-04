@@ -13,6 +13,7 @@ import {
   Wrench,
   Newspaper,
   Brain,
+  GraduationCap,
 } from "lucide-react";
 import {
   Sidebar,
@@ -38,6 +39,7 @@ const items = [
   { title: "Solicitação de Reparo", url: "/reparos", icon: Wrench },
   { title: "Supervisão", url: "/supervisao", icon: ClipboardCheck },
   { title: "Teste seus conhecimentos", url: "/teste-conhecimentos", icon: Brain },
+  { title: "Cursos", url: "/cursos", icon: GraduationCap },
   { title: "Cadastro", url: "/cadastro", icon: UserPlus },
   { title: "Configurações", url: "/configuracoes", icon: Settings },
   { title: "Usuários do Sistema", url: "/usuarios", icon: UserCog, adminOnly: true },

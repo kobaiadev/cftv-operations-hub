@@ -244,7 +244,10 @@ function TesteConhecimentosPage() {
           setErroRanking("Não foi possível carregar o ranking. Tente novamente mais tarde.");
           setRanking([]);
         } else {
-          setRanking(data ?? []);
+          setRanking((data ?? []).flatMap((linha): PontuacaoRanking[] => {
+            if (linha.user_id === null || linha.display_name === null || linha.best_score === null || linha.total_respostas === null || linha.nivel === null) return [];
+            return [{ user_id: linha.user_id, display_name: linha.display_name, best_score: linha.best_score, total_respostas: linha.total_respostas, nivel: linha.nivel }];
+          }));
         }
         setCarregandoRanking(false);
       });

@@ -15,15 +15,37 @@ export const createAccount = createServerFn({ method: "POST" })
     if (accessError) throw new Error("Não foi possível verificar seu acesso.");
     requireAdministrator(access?.role);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: created, error } = await supabaseAdmin.auth.admin.createUser({
+    let { data: created, error } = await supabaseAdmin.auth.admin.createUser({
       email: data.email,
       password: data.senha,
       email_confirm: true,
     });
-    if (error || !created.user)
-      throw new Error(
-        "Não foi possível criar a conta. Verifique o e-mail e os requisitos da senha.",
-      );
+    if (error?.code === "email_exists") {
+      // Conta antiga com acesso removido: reaproveita, redefinindo a senha.
+      const { data: lista } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 });
+      const antigo = lista?.users.find((u) => u.email?.toLowerCase() === data.email.toLowerCase());
+      if (antigo) {
+        const { data: role } = await supabaseAdmin
+          .from("user_roles")
+          .select("user_id")
+          .eq("user_id", antigo.id)
+          .maybeSingle();
+        if (role) throw new Error("Já existe um usuário cadastrado com este e-mail.");
+        const upd = await supabaseAdmin.auth.admin.updateUserById(antigo.id, {
+          password: data.senha,
+          email_confirm: true,
+        });
+        created = upd.data;
+        error = upd.error;
+      }
+    }
+    if (error || !created.user) {
+      const motivo =
+        error?.code === "weak_password"
+          ? "A senha é fraca ou já apareceu em vazamentos. Use uma senha mais forte."
+          : error?.message ?? "erro desconhecido";
+      throw new Error(`Não foi possível criar a conta: ${motivo}`);
+    }
     const { error: roleError } = await supabaseAdmin.from("user_roles").insert({
       user_id: created.user.id,
       email: data.email,

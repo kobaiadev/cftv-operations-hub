@@ -18,10 +18,17 @@ const normalizar = (valor: unknown) =>
     .replace(/[^a-z0-9]/g, "");
 
 function normalizarLoja(valor: unknown) {
-  return normalizar(valor).replace(
-    /^loja0*(\d+)$/,
-    (_match, numero: string) => `loja${Number(numero)}`,
-  );
+  const texto = normalizar(valor);
+  const numero = texto.match(/^(?:loja)?0*(\d+)$/);
+  return numero ? `loja${Number(numero[1])}` : texto;
+}
+
+function acharColuna(cabecalho: string[], nomes: string[]) {
+  for (const nome of nomes) {
+    const indice = cabecalho.indexOf(nome);
+    if (indice >= 0) return indice;
+  }
+  return -1;
 }
 
 function lerMes(valor: unknown): string {
@@ -93,14 +100,18 @@ export async function analisarPlanilhaPerdas(
   }
 
   const abas = await readXlsxFile(conteudo);
-  const aba = abas.find(({ sheet }) => normalizar(sheet) === "analisededados");
+  const temCabecalho = (dados: unknown[][]) =>
+    dados.some((linha) => linha.some((celula) => normalizar(celula).startsWith("loja")));
+  const aba =
+    abas.find(({ sheet }) => normalizar(sheet) === "analisededados") ??
+    abas.find(({ data }) => temCabecalho(data as unknown[][]));
   if (!aba) {
-    throw new Error('A planilha deve conter uma aba chamada "analise de dados".');
+    throw new Error('Nenhuma aba da planilha possui a coluna "Loja".');
   }
 
   const linhas = aba.data as unknown[][];
   const indiceCabecalho = linhas.findIndex((linha) =>
-    linha.some((celula) => normalizar(celula) === "loja"),
+    linha.some((celula) => normalizar(celula).startsWith("loja")),
   );
   if (indiceCabecalho < 0) {
     throw new Error(
@@ -114,10 +125,10 @@ export async function analisarPlanilhaPerdas(
   }
   const cabecalho = linhaCabecalho.map(normalizar);
   const colunas = {
-    loja: cabecalho.indexOf("loja"),
-    ano: cabecalho.indexOf("ano"),
-    mes: cabecalho.indexOf("mes"),
-    valor: cabecalho.indexOf("perdasbrt"),
+    loja: acharColuna(cabecalho, ["loja", "nomeloja", "lojas", "filial"]),
+    ano: acharColuna(cabecalho, ["ano", "exercicio"]),
+    mes: acharColuna(cabecalho, ["mes", "meses", "competencia", "periodo"]),
+    valor: acharColuna(cabecalho, ["perdasbrt", "perdasbruto", "perdabrt", "perdabruta", "perdasbrutas", "perdas", "perda", "valorperdas", "valorperda", "valor", "total"]),
   };
   const faltantes = Object.entries(colunas)
     .filter(([, indice]) => indice < 0)

@@ -51,11 +51,12 @@ describe("importação de planilhas de perdas", () => {
     );
   });
 
-  it("informa quando a planilha não contém a aba de análise solicitada", async () => {
-    prepararPlanilha([["Loja"]], "Planilha1");
-    await expect(analisarPlanilhaPerdas(new ArrayBuffer(1), lojas)).rejects.toThrow(
-      'A planilha deve conter uma aba chamada "analise de dados".',
-    );
+  it("aceita outra aba com cabeçalho e nomes de colunas alternativos", async () => {
+    prepararPlanilha([["Loja", "Ano", "Mês", "Perdas"], ["09", 2026, 3, 150]], "Planilha1");
+    const r = await analisarPlanilhaPerdas(new ArrayBuffer(1), [
+      { ...lojas[0]!, nome: "Loja 09" },
+    ]);
+    expect(r.perdas[0]).toMatchObject({ ano: 2026, mes: "03", valor: 150 });
   });
 
   it("rejeita a importação inteira quando há uma loja sem cadastro", async () => {

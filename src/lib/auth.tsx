@@ -187,6 +187,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [router, queryClient]);
 
+  useEffect(() => {
+    if (!session || !profile || pathname === "/login") {
+      caminhoAnterior.current = null;
+      return;
+    }
+
+    const mudouDeTela = caminhoAnterior.current !== null && caminhoAnterior.current !== pathname;
+    caminhoAnterior.current = pathname;
+    let ativa = true;
+    let atualizando = false;
+    let ultimaAtualizacao = 0;
+
+    const atualizar = () => {
+      if (!ativa || atualizando || document.visibilityState === "hidden") return;
+      const agora = Date.now();
+      if (agora - ultimaAtualizacao < 2000) return;
+      atualizando = true;
+      ultimaAtualizacao = agora;
+      void atualizarEstadoApp()
+        .catch((cause: unknown) => {
+          console.error("Não foi possível atualizar os dados compartilhados.", cause);
+        })
+        .finally(() => {
+          atualizando = false;
+        });
+    };
+
+    if (mudouDeTela) atualizar();
+    window.addEventListener("focus", atualizar);
+    document.addEventListener("visibilitychange", atualizar);
+    const intervalo = window.setInterval(atualizar, 60_000);
+    return () => {
+      ativa = false;
+      window.clearInterval(intervalo);
+      window.removeEventListener("focus", atualizar);
+      document.removeEventListener("visibilitychange", atualizar);
+    };
+  }, [session, profile, pathname]);
+
   const value = useMemo<AuthContextValue>(
     () => ({
       session,

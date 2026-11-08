@@ -78,6 +78,19 @@ describe("session restoration", () => {
     expect(mocks.sync).toHaveBeenCalledWith("03", "user-1");
   });
 
+  it("atualiza os dados compartilhados quando um visualizador retorna ao sistema", async () => {
+    mocks.getUser.mockResolvedValue({ data: { user: { id: "user-1" } }, error: null });
+    const session = { user: { id: "user-1" } } as Session;
+    mocks.getSession.mockResolvedValue({ data: { session }, error: null });
+    render(<AuthProvider><State /></AuthProvider>);
+    await waitFor(() => expect(screen.getByText("signed-in:03")).toBeInTheDocument());
+
+    act(() => window.dispatchEvent(new Event("focus")));
+
+    await waitFor(() => expect(mocks.refresh).toHaveBeenCalledTimes(1));
+    expect(mocks.sync).toHaveBeenCalledWith("03", "user-1");
+  });
+
   it("keeps the form available when no session exists", async () => {
     mocks.getUser.mockResolvedValue({ data: { user: null }, error: { name: "AuthSessionMissingError" } });
     render(<AuthProvider><State /></AuthProvider>);

@@ -59,6 +59,7 @@ import { formatarTextoFormal, limparTextoCapturado } from "@/lib/os-text";
 import { Paperclip } from "lucide-react";
 import { Field, UploadBox } from "@/components/os-form-parts";
 import { podeBaixar, podeEditar, useAuth } from "@/lib/auth";
+import { ACEITE_IMAGEM_OU_PDF, ehImagemOuPdf } from "@/lib/documentos";
 
 const extraVazio = () =>
   Array.from({ length: 4 }, () => ({ file: null as File | null, url: "", lendo: false }));
@@ -237,6 +238,10 @@ function OrdensPage() {
   const [extras, setExtras] = useState(extraVazio);
   const escolherExtra = async (i: number, f: File | undefined) => {
     if (!f) return;
+    if (!ehImagemOuPdf(f)) {
+      toast.error("Selecione uma imagem ou um arquivo PDF.");
+      return;
+    }
     removerTextoOcr(`Documento adicional ${i + 1}`);
     const url = URL.createObjectURL(f);
     setExtras((p) =>
@@ -981,11 +986,16 @@ function OrdensPage() {
             <input
               ref={requisicaoInput}
               type="file"
-              accept="image/*,application/pdf"
+              accept={ACEITE_IMAGEM_OU_PDF}
               className="hidden"
               onChange={(event) => {
                 const arquivo = event.target.files?.[0];
                 if (!arquivo) return;
+                if (!ehImagemOuPdf(arquivo)) {
+                  toast.error("Selecione uma imagem ou um arquivo PDF.");
+                  event.target.value = "";
+                  return;
+                }
                 removerTextoOcr("Requisição de Imagens (POLICIAL)");
                 setRequisicaoFile(arquivo);
                 if (requisicaoUrl) URL.revokeObjectURL(requisicaoUrl);
@@ -999,6 +1009,7 @@ function OrdensPage() {
             <UploadBox
               url={requisicaoUrl}
               alt="Requisição policial de imagens"
+              tipo={requisicaoFile?.type}
               texto={
                 lendoRequisicao
                   ? "Lendo imagem da requisição..."
@@ -1028,19 +1039,26 @@ function OrdensPage() {
           <p className="mb-3 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
             <Paperclip className="size-3.5 text-primary" /> Documentos adicionais (opcional)
           </p>
+          <p className="mb-3 text-xs text-muted-foreground">
+            Envie imagens ou arquivos PDF. A leitura automática é feita nas imagens.
+          </p>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {extras.map((ex, i) => (
               <div key={i}>
                 <input
                   id={`extra-${i}`}
                   type="file"
-                  accept="image/*,application/pdf"
+                  accept={ACEITE_IMAGEM_OU_PDF}
                   className="hidden"
-                  onChange={(e) => escolherExtra(i, e.target.files?.[0])}
+                  onChange={(e) => {
+                    void escolherExtra(i, e.target.files?.[0]);
+                    e.target.value = "";
+                  }}
                 />
                 <UploadBox
                   url={ex.file?.type.startsWith("image/") ? ex.url : ""}
                   alt={`Documento adicional ${i + 1}`}
+                  tipo={ex.file?.type}
                   texto={ex.file ? ex.file.name : `Documento adicional ${i + 1}`}
                   onClick={() => document.getElementById(`extra-${i}`)?.click()}
                 />
@@ -1771,7 +1789,7 @@ function OrdensPage() {
                             <input
                               id={`substituir-anexo-${editando.id}-${indice}`}
                               type="file"
-                              accept="image/*,application/pdf"
+                              accept={ACEITE_IMAGEM_OU_PDF}
                               className="hidden"
                               onChange={(event) => void substituirAnexo(indice, event)}
                             />
@@ -1824,7 +1842,7 @@ function OrdensPage() {
                     <div className="flex items-end">
                       <Input
                         type="file"
-                        accept="image/*,application/pdf"
+                        accept={ACEITE_IMAGEM_OU_PDF}
                         multiple
                         onChange={(event) => void adicionarAnexos(event)}
                         aria-label="Adicionar arquivo à OS"

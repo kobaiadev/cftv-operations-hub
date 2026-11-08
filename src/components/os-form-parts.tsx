@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
-import { ImageUp } from "lucide-react";
+import { FileText, ImageUp } from "lucide-react";
+import { ehArquivoPdf } from "@/lib/documentos";
 
 export function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -14,13 +15,16 @@ export function UploadBox({
   url,
   alt,
   texto,
+  tipo = "",
   onClick,
 }: {
   url: string;
   alt: string;
   texto: string;
+  tipo?: string;
   onClick: () => void;
 }) {
+  const pdf = ehArquivoPdf({ name: texto, type: tipo });
   return (
     <button
       type="button"
@@ -31,8 +35,12 @@ export function UploadBox({
         <img src={url} alt={alt} className="max-h-36 rounded-md object-contain" />
       ) : (
         <>
-          <ImageUp className="size-5 text-primary" />
-          {texto}
+          {pdf ? (
+            <FileText className="size-5 shrink-0 text-primary" aria-label="Arquivo PDF" />
+          ) : (
+            <ImageUp className="size-5 shrink-0 text-primary" />
+          )}
+          <span className="min-w-0 break-words text-left">{texto}</span>
         </>
       )}
     </button>

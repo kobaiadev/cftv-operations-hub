@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({ getUser: vi.fn(), from: vi.fn(), upsert: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  getUser: vi.fn(), from: vi.fn(), upsert: vi.fn(), select: vi.fn(), eq: vi.fn(),
+  maybeSingle: vi.fn(), hydrate: vi.fn(),
+}));
 vi.mock("@/lib/supabase", () => ({ obterClienteSupabase: () => ({
   auth: { getUser: mocks.getUser }, from: mocks.from,
 }) }));

@@ -87,6 +87,27 @@ export async function sincronizarEstadoApp(role: string, userId: string) {
 
 const gravacoes = new Map<AppNamespace, Promise<void>>();
 
+/** Recarrega o estado compartilhado sem migrar dados locais nem conceder permissão de escrita. */
+export async function atualizarEstadoApp() {
+  const supabase = obterClienteSupabase();
+  for (const [namespace, store] of stores) {
+    const gravacao = gravacoes.get(namespace);
+    if (gravacao) await gravacao.catch(() => {});
+
+    const { data: row, error } = await supabase
+      .from("app_state")
+      .select("data")
+      .eq("namespace", namespace)
+      .maybeSingle();
+    if (error) {
+      throw new Error(`Não foi possível atualizar os dados de ${namespace}: ${error.message}`);
+    }
+
+    // Uma alteração local iniciada durante a leitura não pode ser substituída por um snapshot antigo.
+    if (row && !gravacoes.has(namespace)) store.hydrate(row.data);
+  }
+}
+
 export function salvarEstadoApp(namespace: AppNamespace, data: unknown): Promise<void> {
   const anterior = gravacoes.get(namespace) ?? Promise.resolve();
   const atual = anterior.catch(() => {}).then(() => gravarEstadoApp(namespace, data));

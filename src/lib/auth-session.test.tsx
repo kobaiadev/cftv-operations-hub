@@ -6,7 +6,7 @@ const mocks = vi.hoisted(() => ({
   getUser: vi.fn(), getSession: vi.fn(), signOut: vi.fn(),
   maybeSingle: vi.fn(), invalidate: vi.fn(), invalidateQueries: vi.fn(),
   callback: undefined as ((event: string, session: unknown) => void) | undefined,
-  sync: vi.fn(),
+  sync: vi.fn(), refresh: vi.fn(),
 }));
 vi.mock("@/lib/supabase", () => ({ obterClienteSupabase: () => ({
   auth: {

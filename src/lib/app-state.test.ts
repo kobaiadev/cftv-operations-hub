@@ -8,7 +8,16 @@ vi.mock("@/lib/supabase", () => ({ obterClienteSupabase: () => ({
   auth: { getUser: mocks.getUser }, from: mocks.from,
 }) }));
 vi.mock("@/lib/os-files", () => ({ migrarArquivosLegados: vi.fn() }));
-import { salvarEstadoApp } from "@/lib/app-state";
+import { atualizarEstadoApp, registrarEstadoApp, salvarEstadoApp } from "@/lib/app-state";
+
+registrarEstadoApp("cadastro", {
+  snapshot: () => ({}),
+  legacySnapshot: () => null,
+  emptySnapshot: () => ({}),
+  merge: (remote) => remote,
+  hydrate: mocks.hydrate,
+  legacyKey: "teste-cadastro",
+});
 
 describe("persistência compartilhada", () => {
   beforeEach(() => {

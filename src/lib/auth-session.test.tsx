@@ -22,11 +22,18 @@ vi.mock("@/lib/supabase", () => ({ obterClienteSupabase: () => ({
 vi.mock("@/lib/os-store", () => ({}));
 vi.mock("@/lib/cadastro-store", () => ({}));
 vi.mock("@/lib/supervisao-store", () => ({}));
-vi.mock("@/lib/app-state", () => ({ sincronizarEstadoApp: mocks.sync }));
+vi.mock("@/lib/app-state", () => ({
+  sincronizarEstadoApp: mocks.sync,
+  atualizarEstadoApp: mocks.refresh,
+}));
 const router = { invalidate: mocks.invalidate };
 const queryClient = { invalidateQueries: mocks.invalidateQueries };
 const navigate = vi.fn();
-vi.mock("@tanstack/react-router", () => ({ useRouter: () => router, useNavigate: () => navigate }));
+vi.mock("@tanstack/react-router", () => ({
+  useRouter: () => router,
+  useNavigate: () => navigate,
+  useRouterState: () => "/",
+}));
 vi.mock("@tanstack/react-query", () => ({ useQueryClient: () => queryClient }));
 
 import { AuthProvider, useAuth } from "@/lib/auth";

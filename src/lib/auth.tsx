@@ -2,9 +2,9 @@ import { createContext, useContext, useEffect, useMemo, useRef, useState, type R
 import type { Session, User } from "@supabase/supabase-js";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
-import { useNavigate, useRouter } from "@tanstack/react-router";
+import { useNavigate, useRouter, useRouterState } from "@tanstack/react-router";
 import { obterClienteSupabase } from "@/lib/supabase";
-import { sincronizarEstadoApp } from "@/lib/app-state";
+import { atualizarEstadoApp, sincronizarEstadoApp } from "@/lib/app-state";
 import "@/lib/os-store";
 import "@/lib/cadastro-store";
 import "@/lib/supervisao-store";

@@ -32,6 +32,19 @@ describe("persistência compartilhada", () => {
     expect(mocks.from).toHaveBeenCalledWith("app_state");
     expect(mocks.upsert).toHaveBeenCalledWith({ namespace, data, updated_by: "authenticated-user" }, { onConflict: "namespace" });
   });
+  it("recarrega os mesmos dados compartilhados sem filtrar pelo autor nem gravar", async () => {
+    const compartilhado = { perdas: [{ id: "rede", valor: 123 }] };
+    mocks.from.mockReturnValue({ select: mocks.select });
+    mocks.select.mockReturnValue({ eq: mocks.eq });
+    mocks.eq.mockReturnValue({ maybeSingle: mocks.maybeSingle });
+    mocks.maybeSingle.mockResolvedValue({ data: { data: compartilhado }, error: null });
+
+    await atualizarEstadoApp();
+
+    expect(mocks.eq).toHaveBeenCalledWith("namespace", "cadastro");
+    expect(mocks.hydrate).toHaveBeenCalledWith(compartilhado);
+    expect(mocks.upsert).not.toHaveBeenCalled();
+  });
   it("não tenta gravar sem uma sessão válida", async () => {
     mocks.getUser.mockResolvedValue({ data: { user: null }, error: null });
     await expect(salvarEstadoApp("cadastro", {})).rejects.toThrow("Sua sessão expirou");

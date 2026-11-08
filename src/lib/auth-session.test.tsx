@@ -47,6 +47,7 @@ describe("session restoration", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.sync.mockResolvedValue(undefined);
+    mocks.refresh.mockResolvedValue(undefined);
     mocks.signOut.mockImplementation(async () => {
       mocks.callback?.("SIGNED_OUT", null);
       return { error: null };

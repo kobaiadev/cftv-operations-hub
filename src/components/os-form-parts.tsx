@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
-import { ImageUp } from "lucide-react";
+import { FileText, ImageUp } from "lucide-react";
+import { ehArquivoPdf } from "@/lib/documentos";
 
 export function Field({ label, children }: { label: string; children: ReactNode }) {
   return (

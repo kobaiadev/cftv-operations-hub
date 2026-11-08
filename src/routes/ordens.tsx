@@ -59,6 +59,7 @@ import { formatarTextoFormal, limparTextoCapturado } from "@/lib/os-text";
 import { Paperclip } from "lucide-react";
 import { Field, UploadBox } from "@/components/os-form-parts";
 import { podeBaixar, podeEditar, useAuth } from "@/lib/auth";
+import { ACEITE_IMAGEM_OU_PDF, ehImagemOuPdf } from "@/lib/documentos";
 
 const extraVazio = () =>
   Array.from({ length: 4 }, () => ({ file: null as File | null, url: "", lendo: false }));

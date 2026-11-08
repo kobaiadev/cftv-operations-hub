@@ -1,10 +1,10 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
-import { useNavigate, useRouter } from "@tanstack/react-router";
+import { useNavigate, useRouter, useRouterState } from "@tanstack/react-router";
 import { obterClienteSupabase } from "@/lib/supabase";
-import { sincronizarEstadoApp } from "@/lib/app-state";
+import { atualizarEstadoApp, sincronizarEstadoApp } from "@/lib/app-state";
 import "@/lib/os-store";
 import "@/lib/cadastro-store";
 import "@/lib/supervisao-store";
@@ -61,6 +61,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
   const router = useRouter();
   const navigate = useNavigate();
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const caminhoAnterior = useRef<string | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -184,6 +186,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       subscription?.unsubscribe();
     };
   }, [router, queryClient]);
+
+  useEffect(() => {
+    if (!session || !profile || pathname === "/login") {
+      caminhoAnterior.current = null;
+      return;
+    }
+
+    const mudouDeTela = caminhoAnterior.current !== null && caminhoAnterior.current !== pathname;
+    caminhoAnterior.current = pathname;
+    let ativa = true;
+    let atualizando = false;
+    let ultimaAtualizacao = 0;
+
+    const atualizar = () => {
+      if (!ativa || atualizando || document.visibilityState === "hidden") return;
+      const agora = Date.now();
+      if (agora - ultimaAtualizacao < 2000) return;
+      atualizando = true;
+      ultimaAtualizacao = agora;
+      void atualizarEstadoApp()
+        .catch((cause: unknown) => {
+          console.error("Não foi possível atualizar os dados compartilhados.", cause);
+        })
+        .finally(() => {
+          atualizando = false;
+        });
+    };
+
+    if (mudouDeTela) atualizar();
+    window.addEventListener("focus", atualizar);
+    document.addEventListener("visibilitychange", atualizar);
+    const intervalo = window.setInterval(atualizar, 60_000);
+    return () => {
+      ativa = false;
+      window.clearInterval(intervalo);
+      window.removeEventListener("focus", atualizar);
+      document.removeEventListener("visibilitychange", atualizar);
+    };
+  }, [session, profile, pathname]);
 
   const value = useMemo<AuthContextValue>(
     () => ({

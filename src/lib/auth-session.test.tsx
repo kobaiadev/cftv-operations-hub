@@ -6,7 +6,7 @@ const mocks = vi.hoisted(() => ({
   getUser: vi.fn(), getSession: vi.fn(), signOut: vi.fn(),
   maybeSingle: vi.fn(), invalidate: vi.fn(), invalidateQueries: vi.fn(),
   callback: undefined as ((event: string, session: unknown) => void) | undefined,
-  sync: vi.fn(),
+  sync: vi.fn(), refresh: vi.fn(),
 }));
 vi.mock("@/lib/supabase", () => ({ obterClienteSupabase: () => ({
   auth: {
@@ -22,11 +22,18 @@ vi.mock("@/lib/supabase", () => ({ obterClienteSupabase: () => ({
 vi.mock("@/lib/os-store", () => ({}));
 vi.mock("@/lib/cadastro-store", () => ({}));
 vi.mock("@/lib/supervisao-store", () => ({}));
-vi.mock("@/lib/app-state", () => ({ sincronizarEstadoApp: mocks.sync }));
+vi.mock("@/lib/app-state", () => ({
+  sincronizarEstadoApp: mocks.sync,
+  atualizarEstadoApp: mocks.refresh,
+}));
 const router = { invalidate: mocks.invalidate };
 const queryClient = { invalidateQueries: mocks.invalidateQueries };
 const navigate = vi.fn();
-vi.mock("@tanstack/react-router", () => ({ useRouter: () => router, useNavigate: () => navigate }));
+vi.mock("@tanstack/react-router", () => ({
+  useRouter: () => router,
+  useNavigate: () => navigate,
+  useRouterState: () => "/",
+}));
 vi.mock("@tanstack/react-query", () => ({ useQueryClient: () => queryClient }));
 
 import { AuthProvider, useAuth } from "@/lib/auth";
@@ -40,6 +47,7 @@ describe("session restoration", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.sync.mockResolvedValue(undefined);
+    mocks.refresh.mockResolvedValue(undefined);
     mocks.signOut.mockImplementation(async () => {
       mocks.callback?.("SIGNED_OUT", null);
       return { error: null };
@@ -67,6 +75,19 @@ describe("session restoration", () => {
     mocks.getSession.mockResolvedValue({ data: { session }, error: null });
     act(() => mocks.callback?.("SIGNED_IN", session));
     await waitFor(() => expect(screen.getByText("signed-in:03")).toBeInTheDocument());
+    expect(mocks.sync).toHaveBeenCalledWith("03", "user-1");
+  });
+
+  it("atualiza os dados compartilhados quando um visualizador retorna ao sistema", async () => {
+    mocks.getUser.mockResolvedValue({ data: { user: { id: "user-1" } }, error: null });
+    const session = { user: { id: "user-1" } } as Session;
+    mocks.getSession.mockResolvedValue({ data: { session }, error: null });
+    render(<AuthProvider><State /></AuthProvider>);
+    await waitFor(() => expect(screen.getByText("signed-in:03")).toBeInTheDocument());
+
+    act(() => window.dispatchEvent(new Event("focus")));
+
+    await waitFor(() => expect(mocks.refresh).toHaveBeenCalledTimes(1));
     expect(mocks.sync).toHaveBeenCalledWith("03", "user-1");
   });
 

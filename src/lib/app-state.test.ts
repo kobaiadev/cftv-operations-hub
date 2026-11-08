@@ -1,11 +1,23 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({ getUser: vi.fn(), from: vi.fn(), upsert: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  getUser: vi.fn(), from: vi.fn(), upsert: vi.fn(), select: vi.fn(), eq: vi.fn(),
+  maybeSingle: vi.fn(), hydrate: vi.fn(),
+}));
 vi.mock("@/lib/supabase", () => ({ obterClienteSupabase: () => ({
   auth: { getUser: mocks.getUser }, from: mocks.from,
 }) }));
 vi.mock("@/lib/os-files", () => ({ migrarArquivosLegados: vi.fn() }));
-import { salvarEstadoApp } from "@/lib/app-state";
+import { atualizarEstadoApp, registrarEstadoApp, salvarEstadoApp } from "@/lib/app-state";
+
+registrarEstadoApp("cadastro", {
+  snapshot: () => ({}),
+  legacySnapshot: () => null,
+  emptySnapshot: () => ({}),
+  merge: (remote) => remote,
+  hydrate: mocks.hydrate,
+  legacyKey: "teste-cadastro",
+});
 
 describe("persistência compartilhada", () => {
   beforeEach(() => {
@@ -19,6 +31,19 @@ describe("persistência compartilhada", () => {
     await salvarEstadoApp(namespace, data);
     expect(mocks.from).toHaveBeenCalledWith("app_state");
     expect(mocks.upsert).toHaveBeenCalledWith({ namespace, data, updated_by: "authenticated-user" }, { onConflict: "namespace" });
+  });
+  it("recarrega os mesmos dados compartilhados sem filtrar pelo autor nem gravar", async () => {
+    const compartilhado = { perdas: [{ id: "rede", valor: 123 }] };
+    mocks.from.mockReturnValue({ select: mocks.select });
+    mocks.select.mockReturnValue({ eq: mocks.eq });
+    mocks.eq.mockReturnValue({ maybeSingle: mocks.maybeSingle });
+    mocks.maybeSingle.mockResolvedValue({ data: { data: compartilhado }, error: null });
+
+    await atualizarEstadoApp();
+
+    expect(mocks.eq).toHaveBeenCalledWith("namespace", "cadastro");
+    expect(mocks.hydrate).toHaveBeenCalledWith(compartilhado);
+    expect(mocks.upsert).not.toHaveBeenCalled();
   });
   it("não tenta gravar sem uma sessão válida", async () => {
     mocks.getUser.mockResolvedValue({ data: { user: null }, error: null });

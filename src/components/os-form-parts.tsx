@@ -21,7 +21,7 @@ export function UploadBox({
   url: string;
   alt: string;
   texto: string;
-  tipo?: string;
+  tipo?: string | undefined;
   onClick: () => void;
 }) {
   const pdf = ehArquivoPdf({ name: texto, type: tipo });
